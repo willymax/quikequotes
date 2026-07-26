@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TradeType {
+  PAINTING
+  PRESSURE_WASHING
+  CLEANING
+  HVAC
+  LANDSCAPING
+  OTHER
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum TierLabel {
+  GOOD
+  BETTER
+  BEST
+}
+
+enum FollowUpStatus {
+  PENDING
+  SENT
+  SKIPPED
+  FAILED
+}
+
+enum FollowUpChannel {
+  SMS
+  EMAIL
+}
+
+enum FollowUpDay {
+  DAY_1
+  DAY_3
+  DAY_7
+}
+
+model User {
+  id         String    @id @default(cuid())
+  supabaseId String    @unique
+  email      String    @unique
+  businessName String?
+  phone        String?
+  logoUrl      String?
+  tradeType    TradeType @default(OTHER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  quotes    Quote[]
+  templates Template[]
+
+  @@index([supabaseId])
+}
+
+model Quote {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientName     String
+  clientEmail    String?
+  clientPhone    String?
+  jobAddress     String?
+  title          String
+  notes          String?
+  validUntil     DateTime?
+  shareToken     String      @unique @default(cuid())
+  status         QuoteStatus @default(DRAFT)
+  viewedAt       DateTime?
+  acceptedAt     DateTime?
+  acceptedTierId String?
+  signatureDataUrl String?
+  signedAt       DateTime?
+  signedByName   String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  tiers     QuoteTier[]
+  photos    QuotePhoto[]
+  followUps FollowUp[]
+
+  @@index([userId])
+  @@index([shareToken])
+  @@index([status])
+}
+
+model QuoteTier {
+  id          String    @id @default(cuid())
+  quoteId     String
+  quote       Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  label       TierLabel
+  description String?
+  totalCents  Int
+
+  lineItems LineItem[]
+
+  @@unique([quoteId, label])
+  @@index([quoteId])
+}
+
+model LineItem {
+  id          String    @id @default(cuid())
+  tierId      String
+  tier        QuoteTier @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Decimal   @db.Decimal(10, 2)
+  unitCents   Int
+  totalCents  Int
+  sortOrder   Int       @default(0)
+
+  @@index([tierId])
+}
+
+model QuotePhoto {
+  id        String  @id @default(cuid())
+  quoteId   String
+  quote     Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  url       String
+  caption   String?
+  sortOrder Int     @default(0)
+
+  @@index([quoteId])
+}
+
+model FollowUp {
+  id          String          @id @default(cuid())
+  quoteId     String
+  quote       Quote           @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  day         FollowUpDay
+  channel     FollowUpChannel
+  status      FollowUpStatus  @default(PENDING)
+  scheduledAt DateTime
+  sentAt      DateTime?
+  error       String?
+
+  @@unique([quoteId, day, channel])
+  @@index([status, scheduledAt])
+}
+
+model Template {
+  id        String    @id @default(cuid())
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  tradeType TradeType
+  isDefault Boolean   @default(false)
+
+  items TemplateItem[]
+
+  @@index([userId])
+  @@index([tradeType])
+}
+
+model TemplateItem {
+  id          String    @id @default(cuid())
+  templateId  String
+  template    Template  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  description String
+  unitCents   Int       @default(0)
+  sortOrder   Int       @default(0)
+  tierHint    TierLabel @default(GOOD)
+}
