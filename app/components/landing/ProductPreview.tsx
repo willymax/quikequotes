@@ -12,7 +12,7 @@ export function ProductPreview() {
           What it actually looks like
         </h2>
         <p className="text-center text-ink-muted mb-12 max-w-lg mx-auto">
-          No mockups pretending — this is the real flow, start to finish.
+          Not a mockup — this is the real flow, start to finish.
         </p>
 
         <div className="grid gap-8 md:grid-cols-2">

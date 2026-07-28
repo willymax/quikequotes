@@ -2,17 +2,17 @@ const EXAMPLES = [
   {
     emoji: "🎨",
     quote: "\"I used to lose the good jobs to whoever texted back first. Now I send the quote from the truck.\"",
-    role: "Solo painter, illustrative example",
+    role: "Solo painter (example)",
   },
   {
     emoji: "💦",
     quote: "\"The tiers alone bumped my average job up — clients pick 'Better' way more than I expected.\"",
-    role: "Pressure washing owner, illustrative example",
+    role: "Pressure washing owner (example)",
   },
   {
     emoji: "🧹",
     quote: "\"I'm terrible at following up. Now it just happens, and I still get the credit for checking in.\"",
-    role: "Cleaning business owner, illustrative example",
+    role: "Cleaning business owner (example)",
   },
 ];
 
@@ -24,8 +24,8 @@ export function Testimonials() {
           What this kind of owner tells us
         </h2>
         <p className="text-center text-xs text-ink-muted/70 mb-12 max-w-md mx-auto italic">
-          Illustrative examples built from target-customer interviews —
-          not yet live customer quotes. We&apos;ll swap in real ones as early
+          These are example quotes based on interviews with owners like you —
+          not real customers yet. We&apos;ll swap in real ones as early
           members come on board.
         </p>
 

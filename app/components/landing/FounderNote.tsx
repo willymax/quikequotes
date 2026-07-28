@@ -11,7 +11,7 @@ export function FounderNote() {
               Hi — I&apos;m building QuikeQuotes because home-service pros
               keep losing jobs to slow, sloppy follow-up, not bad work.
             </strong>{" "}
-            This isn&apos;t a VC-backed suite with a sales team — it&apos;s an
+            This isn&apos;t a big company with a sales team — it&apos;s an
             early, hands-on product, and I read every reply. If something is
             missing for your trade, tell me. I&apos;m building this with
             painters and pressure washers, not just for them.

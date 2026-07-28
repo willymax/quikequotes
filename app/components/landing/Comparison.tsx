@@ -24,11 +24,11 @@ export function Comparison() {
     <section className="px-6 py-20 bg-paper">
       <div className="max-w-4xl mx-auto">
         <h2 className="text-3xl sm:text-4xl font-extrabold tracking-[-0.02em] text-center mb-3 text-ink">
-          Not another full field-service suite
+          Not another all-in-one tool
         </h2>
         <p className="text-center text-ink-muted mb-12 max-w-lg mx-auto">
           Jobber, Housecall Pro and ServiceTitan are great once you have a
-          team and a full pipeline. Most 1–5 person operations just need to
+          team and a full schedule. Most 1–5 person operations just need to
           win the job first.
         </p>
 
@@ -41,7 +41,7 @@ export function Comparison() {
                   QuikeQuotes
                 </th>
                 <th className="font-semibold px-3 py-3 text-paper-muted">
-                  Full suites
+                  All-in-one tools
                 </th>
               </tr>
             </thead>

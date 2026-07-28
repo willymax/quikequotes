@@ -9,13 +9,13 @@ const PROBLEMS = [
     icon: "📵",
     title: "Nobody follows up",
     lead: "You send a quote and then... nothing.",
-    rest: "No reminder, no \"any questions?\" text. The job silently goes to the competitor who called back twice. Follow-up is the highest-ROI thing in your business — and the one you're worst at, because it's awkward and you're busy.",
+    rest: "No reminder, no \"any questions?\" text. The job silently goes to the competitor who called back twice. Follow-up pays off more than almost anything else you do — and it's the thing you're worst at, because it's awkward and you're busy.",
   },
   {
     icon: "📝",
     title: "Quotes look amateur",
     lead: "A price texted as \"itll be around 450\" loses to a branded quote with photos, line items, and an Accept button — even at a higher price.",
-    rest: "Professionalism is a pricing lever you're not using.",
+    rest: "Looking professional lets you charge more, and you're leaving that on the table.",
   },
 ];
 

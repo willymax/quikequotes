@@ -30,7 +30,7 @@ export function Solution() {
           How QuikeQuotes fixes it
         </h2>
         <p className="text-center text-ink-muted mb-12 max-w-lg mx-auto">
-          Not a full field-service suite — just the part that wins the job in
+          Not an all-in-one tool — just the part that wins the job in
           the first place.
         </p>
 
