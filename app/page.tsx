@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getDbUser } from "@/lib/auth";
+import { PLANS } from "./components/landing/plans";
 import { Hero } from "./components/landing/Hero";
 import { Problem } from "./components/landing/Problem";
 import { Solution } from "./components/landing/Solution";
@@ -12,12 +13,33 @@ import { Pricing } from "./components/landing/Pricing";
 import { Faq } from "./components/landing/Faq";
 import { ClosingCta } from "./components/landing/ClosingCta";
 
+const softwareJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "QuikeQuotes",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  offers: PLANS.map((plan) => ({
+    "@type": "Offer",
+    name: plan.name,
+    price: plan.price.replace("$", ""),
+    priceCurrency: "USD",
+    description: plan.tagline,
+  })),
+};
+
 export default async function LandingPage() {
   const user = await getDbUser();
   const signedIn = Boolean(user);
 
   return (
     <div className="min-h-screen bg-paper flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(softwareJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
       <header className="bg-ink px-6 py-5">
         <div className="flex items-center justify-between max-w-6xl mx-auto w-full">
           <span className="font-extrabold text-lg tracking-tight text-white">
@@ -66,7 +88,21 @@ export default async function LandingPage() {
       </main>
 
       <footer className="bg-ink px-6 py-8 text-center text-sm text-paper-muted">
-        © {new Date().getFullYear()} QuikeQuotes. Built for the ladder, not the boardroom.
+        <p>© {new Date().getFullYear()} QuikeQuotes. Built for the ladder, not the boardroom.</p>
+        <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <Link href="/privacy" className="hover:text-white transition-colors">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="hover:text-white transition-colors">
+            Terms of Service
+          </Link>
+          <Link href="/cookies" className="hover:text-white transition-colors">
+            Cookie Policy
+          </Link>
+          <Link href="/refunds" className="hover:text-white transition-colors">
+            Refunds
+          </Link>
+        </nav>
       </footer>
     </div>
   );
