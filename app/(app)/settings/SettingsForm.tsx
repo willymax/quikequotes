@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { updateBusinessProfile } from "@/app/actions/settings";
 
 type User = {
@@ -16,13 +16,24 @@ const TRADE_TYPES = [
   { value: "CLEANING", label: "Cleaning" },
   { value: "HVAC", label: "HVAC" },
   { value: "LANDSCAPING", label: "Landscaping" },
+  { value: "FUMIGATION", label: "Fumigation" },
+  { value: "MOVING_SERVICES", label: "Moving Services" },
   { value: "OTHER", label: "Other" },
 ];
 
 export function SettingsForm({ user }: { user: User }) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+
+  function fillTestData() {
+    const form = formRef.current;
+    if (!form) return;
+    (form.elements.namedItem("businessName") as HTMLInputElement).value = "Lorem Ipsum Painting Co.";
+    (form.elements.namedItem("phone") as HTMLInputElement).value = "+1 555 123 4567";
+    (form.elements.namedItem("logoUrl") as HTMLInputElement).value = "";
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,7 +52,16 @@ export function SettingsForm({ user }: { user: User }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+      {process.env.NODE_ENV === "development" && (
+        <button
+          type="button"
+          onClick={fillTestData}
+          className="w-full h-9 rounded-xl border border-dashed border-zinc-300 text-xs text-zinc-500 hover:border-zinc-500 hover:text-zinc-700 transition-colors"
+        >
+          Fill Test Data (dev only)
+        </button>
+      )}
       <div>
         <label className="block text-sm font-medium mb-1.5" htmlFor="businessName">
           Business Name <span className="text-red-500">*</span>

@@ -20,15 +20,13 @@ Legend: ✅ done · 🚧 partial / in-progress · ⬜ not started
 ## 2. Quote Builder
 
 - ✅ 3-step mobile wizard (client info → template → create) — `app/(app)/quotes/new/QuoteWizard.tsx`
-- ✅ Trade-specific starter templates seeded per trade (painting, pressure washing, cleaning, HVAC, landscaping) — `prisma/seed.ts`
+- ✅ Trade-specific starter templates seeded per trade (painting, pressure washing, cleaning, HVAC, landscaping, fumigation, moving services) — `prisma/seed.ts`
 - ✅ Good/Better/Best tiers created automatically on quote creation — `app/actions/quotes.ts` `createQuote()`
 - ✅ Template line items auto-applied to tiers by `tierHint` on create — `createQuote()`
-- ✅ Line item CRUD (add/edit/delete) with tier total recalculation — `app/(app)/quotes/[id]/edit/TierEditor.tsx` + `app/actions/quotes.ts` (`addLineItem`/`updateLineItem`/`deleteLineItem`/`recalcTierTotal`)
-- ✅ Tier description editing — `updateTierDescription()` action (no UI hook found yet for description field in `TierEditor.tsx` — action exists, editor doesn't expose it) — 🚧 more accurately partial, see note
-- ⬜ **Photo upload** — `QuotePhoto` model exists in `prisma/schema.prisma` and the public quote view renders a photo grid (`app/q/[token]/page.tsx`), but there is no upload UI, no storage integration (no UploadThing/S3/Blob/Cloudinary in `package.json`), and no server action to create `QuotePhoto` rows. This is a core v1 loop item and is currently a dead end.
+- ✅ Line item CRUD (add/edit/delete) with tier total recalculation — `app/(app)/quotes/[id]/edit/TierEditor.tsx` + `app/actions/quotes.ts` (`addLineItem`/`updateLineItem`/`deleteLineItem`/`recalcTierTotal`). `LineItem.quantity` (Prisma `Decimal`) is converted to a plain `number` in `edit/page.tsx` before being passed to the client `TierEditor` — Decimal instances aren't serializable across the Server→Client Component boundary and previously threw a dev-mode console error
+- ✅ Tier description editing — `updateTierDescription()` action wired into `TierEditor.tsx`'s `TierDescriptionEditor` component
+- ✅ Photo upload — UploadThing integration (`app/api/uploadthing/core.ts`, `route.ts`, `lib/uploadthing.ts`), `addPhoto`/`deletePhoto` actions in `app/actions/photos.ts`, upload/delete UI in `app/(app)/quotes/[id]/edit/PhotoManager.tsx`. Public quote view already rendered the grid.
 - ⬜ "3-minute" time-to-quote — no instrumentation/telemetry to confirm, and wizard still requires manual per-item entry after template load (no bulk quantity/price shortcuts)
-
-Note on tier description: `updateTierDescription` is a real, wired server action, but `TierEditor.tsx` never calls it — treat as 🚧 backend-only.
 
 ## 3. Client-Facing Quote View
 
@@ -39,9 +37,9 @@ Note on tier description: `updateTierDescription` is a real, wired server action
   - Email pixel tracking — `app/api/track/open/route.ts`, embedded in `lib/email.ts` templates
 - ✅ E-sign — canvas signature capture via `signature_pad`, stored as data URL — `app/q/[token]/sign/SignatureCapture.tsx`, `Quote.signatureDataUrl`
 - ✅ Accept flow — per-tier "Accept This Option" → sign page → `acceptQuote()` action sets status `ACCEPTED`, records signer name/timestamp, cancels pending follow-ups — `app/actions/quotes.ts`
-- 🚧 Decline flow — **broken**: the client view posts `<form action="/q/[token]/decline" method="POST">` (`app/q/[token]/page.tsx` line ~190) but no route handler exists at that path (only `page.tsx`, `sign/`, and `not-found.tsx` exist under `app/q/[token]/`). The `declineQuote(token)` server action is fully implemented in `app/actions/quotes.ts` but nothing calls it — this will 404 today.
+- ✅ Decline flow — `app/q/[token]/decline/route.ts` POST handler calls `declineQuote(token)`, 303-redirects back to `/q/[token]`
 - ⬜ Quote expiration enforcement — `Quote.validUntil` and `QuoteStatus.EXPIRED` exist in the schema, but nothing sets `EXPIRED` automatically (no cron/cutoff check); `EXPIRED` UI states exist purely for a status that's never reached
-- ⬜ Copy-link button — present in UI (`app/(app)/quotes/[id]/page.tsx`) but wired to `onClick={undefined}` — visibly a stub, does nothing
+- ✅ Copy-link button — `CopyLinkButton.tsx` client component, clipboard API + "Copied!" state
 
 ## 4. Automated Follow-Up Engine
 
@@ -61,12 +59,12 @@ Note on tier description: `updateTierDescription` is a real, wired server action
 
 - ✅ Business profile form — business name, phone, trade type, logo URL — `app/(app)/settings/SettingsForm.tsx`, `app/actions/settings.ts`
 - 🚧 Logo — stored/rendered as a plain URL string (`z.string().url()`), no file upload widget or image hosting integration; user must host their own logo somewhere else and paste a link
-- ✅ Template listing (system defaults + user's own) — `app/(app)/templates/page.tsx`
-- ✅ Seeded system templates per trade — `prisma/seed.ts` (Painting interior/exterior, Pressure Washing driveway, plus others — truncated read, more trades likely seeded)
+- ✅ Template listing (system defaults + user's own) with full-contents preview — `app/(app)/templates/page.tsx`, native `<details>`/`<summary>` disclosure per card, items grouped under Good/Better/Best headers, no truncation
+- ✅ Seeded system templates per trade — `prisma/seed.ts`, 2 templates each for Painting, Pressure Washing, Cleaning, Fumigation, HVAC, Landscaping, Moving Services (14 total)
 - ✅ Apply template to existing quote (backend) — `applyTemplate()` in `app/actions/templates.ts`
 - ✅ Save quote as custom template (backend) — `createCustomTemplate()` in `app/actions/templates.ts`
-- ⬜ UI to trigger `applyTemplate` / `createCustomTemplate` — grepped entire `app/` tree, both functions are defined but never imported/called from any component. Template application currently only happens at quote-creation time via the wizard's step 2 picker (a separate code path in `createQuote()`); mid-edit template swap and "save as template" are backend-only stubs.
-- ⬜ Template editing/deletion UI — templates page is read-only display
+- ✅ UI to trigger `applyTemplate` / `createCustomTemplate` — `TemplateToolbar` in `TierEditor.tsx` (apply gated by `window.confirm` since it replaces all line items; save-as-template via inline name form). Both this picker and the new-quote wizard's template step show templates across **all** trades (not just the user's own `tradeType`), each labeled with its trade, since `applyTemplate` never enforced a trade match — the prior filter was UI-only and blocked users from browsing/using templates outside their profile's single trade
+- ⬜ Template editing/deletion UI — templates page is still read-only display (preview only, no mutation)
 
 ## 6. Dashboard & Quote List / Status Tracking
 

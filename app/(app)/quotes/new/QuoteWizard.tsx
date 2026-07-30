@@ -1,12 +1,23 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { createQuote } from "@/app/actions/quotes";
 
 type Template = {
   id: string;
   name: string;
   tradeType: string;
+};
+
+const TRADE_LABELS: Record<string, string> = {
+  PAINTING: "Painting",
+  PRESSURE_WASHING: "Pressure Washing",
+  CLEANING: "Cleaning",
+  HVAC: "HVAC",
+  LANDSCAPING: "Landscaping",
+  FUMIGATION: "Fumigation",
+  MOVING_SERVICES: "Moving Services",
+  OTHER: "Other",
 };
 
 type Step = 1 | 2 | 3;
@@ -27,6 +38,7 @@ type ClientFields = {
 };
 
 export function QuoteWizard({ templates }: { templates: Template[] }) {
+  const step1FormRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState<Step>(1);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [clientFields, setClientFields] = useState<ClientFields>({
@@ -48,6 +60,17 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
       notes: fd.get("notes") as string ?? "",
     });
     setStep(2);
+  }
+
+  function fillTestData() {
+    const form = step1FormRef.current;
+    if (!form) return;
+    (form.elements.namedItem("title") as HTMLInputElement).value = "Lorem Ipsum Job — 123 Main St";
+    (form.elements.namedItem("clientName") as HTMLInputElement).value = "Jane Doe";
+    (form.elements.namedItem("clientPhone") as HTMLInputElement).value = "+1 555 987 6543";
+    (form.elements.namedItem("clientEmail") as HTMLInputElement).value = "jane.doe@example.com";
+    (form.elements.namedItem("jobAddress") as HTMLInputElement).value = "123 Main St, Springfield, ST";
+    (form.elements.namedItem("notes") as HTMLTextAreaElement).value = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -87,11 +110,21 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
         ))}
       </div>
 
-      <form onSubmit={step === 1 ? advanceFromStep1 : handleSubmit}>
+      <form ref={step1FormRef} onSubmit={step === 1 ? advanceFromStep1 : handleSubmit}>
         {/* Step 1 — Client Info */}
         {step === 1 && (
           <div className="space-y-5">
             <h2 className="text-xl font-bold">Client Info</h2>
+
+            {process.env.NODE_ENV === "development" && (
+              <button
+                type="button"
+                onClick={fillTestData}
+                className="w-full h-9 rounded-xl border border-dashed border-zinc-300 text-xs text-zinc-500 hover:border-zinc-500 hover:text-zinc-700 transition-colors"
+              >
+                Fill Test Data (dev only)
+              </button>
+            )}
 
             <div>
               <label className="block text-sm font-medium mb-1.5" htmlFor="title">
@@ -218,6 +251,9 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
                   }`}
                 >
                   <p className="font-semibold">{t.name}</p>
+                  <p className="text-sm text-zinc-500 mt-0.5">
+                    {TRADE_LABELS[t.tradeType] ?? t.tradeType}
+                  </p>
                 </button>
               ))}
             </div>

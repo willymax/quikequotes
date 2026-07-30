@@ -1,11 +1,31 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { addLineItem, updateLineItem, deleteLineItem } from "@/app/actions/quotes";
+import {
+  addLineItem,
+  updateLineItem,
+  deleteLineItem,
+  updateTierDescription,
+} from "@/app/actions/quotes";
+import { applyTemplate, createCustomTemplate } from "@/app/actions/templates";
+
+type Template = { id: string; name: string; tradeType: string };
+
+const TRADE_LABELS: Record<string, string> = {
+  PAINTING: "Painting",
+  PRESSURE_WASHING: "Pressure Washing",
+  CLEANING: "Cleaning",
+  HVAC: "HVAC",
+  LANDSCAPING: "Landscaping",
+  FUMIGATION: "Fumigation",
+  MOVING_SERVICES: "Moving Services",
+  OTHER: "Other",
+};
+
 type LineItem = {
   id: string;
   description: string;
-  quantity: { toString(): string };
+  quantity: number;
   unitCents: number;
   totalCents: number;
   sortOrder: number;
@@ -31,13 +51,23 @@ const TIER_LABELS: Record<string, string> = {
   BEST: "Best",
 };
 
-export function TierEditor({ tiers, quoteId }: { tiers: Tier[]; quoteId: string }) {
+export function TierEditor({
+  tiers,
+  quoteId,
+  templates,
+}: {
+  tiers: Tier[];
+  quoteId: string;
+  templates: Template[];
+}) {
   const [activeTab, setActiveTab] = useState(tiers[0]?.label ?? "GOOD");
 
   const activeTier = tiers.find((t) => t.label === activeTab);
 
   return (
     <div>
+      <TemplateToolbar quoteId={quoteId} templates={templates} />
+
       {/* Tab selector */}
       <div className="flex rounded-xl border border-zinc-200 overflow-hidden mb-6">
         {tiers.map((tier) => (
@@ -74,6 +104,8 @@ function TierLineItems({ tier, quoteId }: { tier: Tier; quoteId: string }) {
         <span className="font-semibold">{TIER_LABELS[tier.label]}</span>
         <span className="text-lg font-bold">${(tier.totalCents / 100).toLocaleString()}</span>
       </div>
+
+      <TierDescriptionEditor tier={tier} />
 
       {tier.lineItems.map((item) => (
         <LineItemRow key={item.id} item={item} quoteId={quoteId} />
@@ -164,6 +196,8 @@ function AddLineItemForm({
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(formData: FormData) {
+    const unitPrice = Number(formData.get("unitPrice"));
+    formData.set("unitCents", String(Math.round(unitPrice * 100)));
     startTransition(async () => {
       await addLineItem(tierId, formData);
       onDone();
@@ -191,12 +225,12 @@ function AddLineItemForm({
           className="w-20 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
         />
         <input
-          name="unitCents"
+          name="unitPrice"
           type="number"
           required
           min="0"
-          step="1"
-          placeholder="Price (cents)"
+          step="0.01"
+          placeholder="Price ($)"
           className="flex-1 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
         />
       </div>
@@ -238,7 +272,7 @@ function EditLineItemForm({
       await updateLineItem(item.id, {
         description: String(data.get("description")),
         quantity: Number(data.get("quantity")),
-        unitCents: Number(data.get("unitCents")),
+        unitCents: Math.round(Number(data.get("unitPrice")) * 100),
       });
       onDone();
     });
@@ -264,12 +298,12 @@ function EditLineItemForm({
           className="w-20 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
         />
         <input
-          name="unitCents"
+          name="unitPrice"
           type="number"
           required
           min="0"
-          step="1"
-          defaultValue={String(item.unitCents)}
+          step="0.01"
+          defaultValue={(item.unitCents / 100).toFixed(2)}
           className="flex-1 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
         />
       </div>
@@ -290,5 +324,181 @@ function EditLineItemForm({
         </button>
       </div>
     </form>
+  );
+}
+
+function TemplateToolbar({ quoteId, templates }: { quoteId: string; templates: Template[] }) {
+  const [mode, setMode] = useState<"none" | "apply" | "save">("none");
+  const [isPending, startTransition] = useTransition();
+  const [saveName, setSaveName] = useState("");
+
+  function handleApply(templateId: string) {
+    if (!window.confirm("This replaces all current line items in every tier. Continue?")) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await applyTemplate(quoteId, templateId);
+      if (result?.error) alert(result.error);
+      setMode("none");
+    });
+  }
+
+  function handleSave(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!saveName.trim()) return;
+    startTransition(async () => {
+      const result = await createCustomTemplate(quoteId, saveName.trim());
+      if (result?.error) {
+        alert(result.error);
+      } else {
+        alert("Saved as template.");
+        setSaveName("");
+        setMode("none");
+      }
+    });
+  }
+
+  if (mode === "none") {
+    return (
+      <div className="flex gap-2 mb-4">
+        <button
+          type="button"
+          onClick={() => setMode("apply")}
+          className="flex-1 h-10 rounded-xl border border-zinc-300 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Apply Template
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("save")}
+          className="flex-1 h-10 rounded-xl border border-zinc-300 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Save as Template
+        </button>
+      </div>
+    );
+  }
+
+  if (mode === "apply") {
+    return (
+      <div className="space-y-2 mb-4">
+        {templates.length === 0 ? (
+          <p className="text-sm text-zinc-500">No templates available.</p>
+        ) : (
+          templates.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              disabled={isPending}
+              onClick={() => handleApply(t.id)}
+              className="w-full p-3 rounded-2xl border-2 border-zinc-200 text-left hover:border-zinc-400 transition-colors disabled:opacity-50"
+            >
+              <p className="font-semibold text-sm">{t.name}</p>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                {TRADE_LABELS[t.tradeType] ?? t.tradeType}
+              </p>
+            </button>
+          ))
+        )}
+        <button
+          type="button"
+          onClick={() => setMode("none")}
+          className="w-full h-10 rounded-xl border border-zinc-300 text-sm font-medium"
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSave} className="space-y-2 mb-4">
+      <input
+        type="text"
+        required
+        value={saveName}
+        onChange={(e) => setSaveName(e.target.value)}
+        placeholder="Template name"
+        className="w-full h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+      />
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="flex-1 h-10 rounded-xl bg-zinc-900 text-white text-sm font-medium disabled:opacity-60"
+        >
+          {isPending ? "Saving..." : "Save"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("none")}
+          className="flex-1 h-10 rounded-xl border border-zinc-300 text-sm font-medium"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function TierDescriptionEditor({ tier }: { tier: Tier }) {
+  const [editing, setEditing] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [value, setValue] = useState(tier.description ?? "");
+
+  function handleSave(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    startTransition(async () => {
+      await updateTierDescription(tier.id, value);
+      setEditing(false);
+    });
+  }
+
+  if (editing) {
+    return (
+      <form onSubmit={handleSave} className="space-y-2">
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Describe what's included in this tier..."
+          rows={3}
+          className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+        />
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={isPending}
+            className="flex-1 h-9 rounded-xl bg-zinc-900 text-white text-xs font-medium disabled:opacity-60"
+          >
+            {isPending ? "Saving..." : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setValue(tier.description ?? ""); setEditing(false); }}
+            className="flex-1 h-9 rounded-xl border border-zinc-300 text-xs font-medium"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  return tier.description ? (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="w-full text-left text-sm text-zinc-600 hover:text-zinc-900"
+    >
+      {tier.description}
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="text-xs text-zinc-400 underline"
+    >
+      + Add description
+    </button>
   );
 }

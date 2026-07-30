@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { SendQuoteButton } from "./SendQuoteButton";
+import { CopyLinkButton } from "./CopyLinkButton";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   DRAFT: { label: "Draft", color: "bg-zinc-100 text-zinc-600" },
@@ -67,12 +68,7 @@ export default async function QuoteDetailPage({
         <div className="rounded-2xl bg-zinc-50 p-4">
           <p className="text-xs text-zinc-500 mb-1.5 font-medium">Client Link</p>
           <p className="text-sm font-mono break-all text-zinc-800">{publicUrl}</p>
-          <button
-            className="mt-2 text-xs font-medium text-zinc-900 underline underline-offset-2"
-            onClick={undefined}
-          >
-            Copy link
-          </button>
+          <CopyLinkButton publicUrl={publicUrl} />
         </div>
       )}
 

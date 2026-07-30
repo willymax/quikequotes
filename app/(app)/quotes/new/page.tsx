@@ -8,7 +8,6 @@ export default async function NewQuotePage() {
   const templates = await db.template.findMany({
     where: {
       OR: [{ userId: null }, { userId: user.id }],
-      tradeType: user.tradeType,
     },
     select: { id: true, name: true, tradeType: true },
     orderBy: [{ isDefault: "desc" }, { name: "asc" }],

@@ -14,6 +14,8 @@ const profileSchema = z.object({
     "CLEANING",
     "HVAC",
     "LANDSCAPING",
+    "FUMIGATION",
+    "MOVING_SERVICES",
     "OTHER",
   ]),
   logoUrl: z.string().url().optional().or(z.literal("")),
