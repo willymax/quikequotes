@@ -62,12 +62,14 @@ export function TierEditor({
   templates,
   taxRatePercent,
   userTradeType,
+  currency,
 }: {
   tiers: Tier[];
   quoteId: string;
   templates: Template[];
   taxRatePercent: number;
   userTradeType: string;
+  currency: string;
 }) {
   const [activeTab, setActiveTab] = useState(tiers[0]?.label ?? "GOOD");
 
@@ -98,7 +100,8 @@ export function TierEditor({
             {TIER_LABELS[tier.label]}
             <span className="block text-xs font-normal mt-0.5 opacity-75">
               {formatMoney(
-                quoteTotals(tier.totalCents, taxRatePercent).totalCents
+                quoteTotals(tier.totalCents, taxRatePercent).totalCents,
+                currency
               )}
             </span>
           </button>
@@ -112,6 +115,7 @@ export function TierEditor({
           tier={activeTier}
           taxRatePercent={taxRatePercent}
           canRemove={tiers.length > 1}
+          currency={currency}
         />
       )}
     </div>
@@ -151,10 +155,12 @@ function TierLineItems({
   tier,
   taxRatePercent,
   canRemove,
+  currency,
 }: {
   tier: Tier;
   taxRatePercent: number;
   canRemove: boolean;
+  currency: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
@@ -178,13 +184,15 @@ function TierLineItems({
     <div className={`rounded-2xl border-2 ${TIER_COLORS[tier.label]} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
         <span className="font-semibold">{TIER_LABELS[tier.label]}</span>
-        <span className="text-lg font-bold">{formatMoney(totals.totalCents)}</span>
+        <span className="text-lg font-bold">
+          {formatMoney(totals.totalCents, currency)}
+        </span>
       </div>
 
       <TierDescriptionEditor tier={tier} />
 
       {tier.lineItems.map((item) => (
-        <LineItemRow key={item.id} item={item} />
+        <LineItemRow key={item.id} item={item} currency={currency} />
       ))}
 
       {adding ? (
@@ -203,15 +211,15 @@ function TierLineItems({
         <div className="pt-3 border-t border-zinc-100 space-y-1 text-sm">
           <div className="flex justify-between text-zinc-600">
             <span>Subtotal</span>
-            <span>{formatMoney(totals.subtotalCents)}</span>
+            <span>{formatMoney(totals.subtotalCents, currency)}</span>
           </div>
           <div className="flex justify-between text-zinc-600">
             <span>Tax ({Number(taxRatePercent)}%)</span>
-            <span>{formatMoney(totals.taxCents)}</span>
+            <span>{formatMoney(totals.taxCents, currency)}</span>
           </div>
           <div className="flex justify-between font-semibold text-zinc-900">
             <span>Total</span>
-            <span>{formatMoney(totals.totalCents)}</span>
+            <span>{formatMoney(totals.totalCents, currency)}</span>
           </div>
         </div>
       )}
@@ -230,7 +238,7 @@ function TierLineItems({
   );
 }
 
-function LineItemRow({ item }: { item: LineItem }) {
+function LineItemRow({ item, currency }: { item: LineItem; currency: string }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -243,11 +251,13 @@ function LineItemRow({ item }: { item: LineItem }) {
       <div className="min-w-0">
         <p className="text-sm font-medium truncate">{item.description}</p>
         <p className="text-xs text-zinc-500">
-          {Number(item.quantity)} × {formatMoney(item.unitCents)}
+          {Number(item.quantity)} × {formatMoney(item.unitCents, currency)}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-sm font-semibold">{formatMoney(item.totalCents)}</span>
+        <span className="text-sm font-semibold">
+          {formatMoney(item.totalCents, currency)}
+        </span>
         <button
           type="button"
           onClick={() => setEditing(true)}

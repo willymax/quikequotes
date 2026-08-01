@@ -100,7 +100,7 @@ export default async function TemplatesPage({
                             <span>{item.description}</span>
                             {item.unitCents > 0 && (
                               <span className="text-zinc-400 shrink-0">
-                                {formatMoney(item.unitCents)}
+                                {formatMoney(item.unitCents, user.currency)}
                               </span>
                             )}
                           </li>

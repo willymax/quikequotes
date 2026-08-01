@@ -65,7 +65,8 @@ Legend: ✅ done · 🚧 partial / in-progress · ⬜ not started
 
 ## 5. Settings & Templates
 
-- ✅ Business profile form — business name, phone, trade type, logo URL, default tax rate — `app/(app)/settings/SettingsForm.tsx`, `app/actions/settings.ts`
+- ✅ Business profile form — business name, phone, trade type, logo URL, default tax rate, currency — `app/(app)/settings/SettingsForm.tsx`, `app/actions/settings.ts`
+- ✅ Currency — `User.currency` (Settings) is snapshotted onto `Quote.currency` at creation, exactly like the tax rate, so changing the business currency never relabels a quote a client has already seen. Per-quote override lives beside the tax rate in `QuoteDetailsEditor` (relabels only — amounts are never converted). `lib/currency.ts` holds the supported list, `normalizeCurrency()` and `isSupportedCurrency()`; `formatMoney(cents, currency)` in `lib/money.ts` formats via `Intl.NumberFormat` with a try/catch fallback. The list is deliberately **two-decimal currencies only** — money is stored as integer minor units everywhere, so a zero-decimal currency (JPY, KRW) would silently change what those integers mean. Existing quotes were backfilled to the `USD` column default by the migration, so pre-existing quotes stay `$` until relabelled per quote
 - 🚧 Logo — stored/rendered as a plain URL string (`z.string().url()`), no file upload widget or image hosting integration; user must host their own logo somewhere else and paste a link
 - ✅ Template listing (system defaults + user's own) with full-contents preview — `app/(app)/templates/page.tsx`, native `<details>`/`<summary>` disclosure per card, items grouped under Good/Better/Best headers, no truncation
 - ✅ Seeded system templates per trade — `prisma/seed.ts`, 2 templates each for Painting, Pressure Washing, Cleaning, Fumigation, HVAC, Landscaping, Moving Services (14 total)
@@ -86,7 +87,7 @@ Legend: ✅ done · 🚧 partial / in-progress · ⬜ not started
 - ✅ Status tabs — **All · Drafts · Sent · Accepted · Closed**, each chip carrying its count. `Sent` folds `SENT`+`VIEWED` (a viewed quote is still an open opportunity) and `Closed` folds `DECLINED`+`EXPIRED`, so five chips cover six statuses. Horizontally scrollable; unknown `?tab=` slug falls back to All
 - ✅ Search + sort — `?q=` matches title or client name (`contains`, `mode: "insensitive"`); `?sort=newest|oldest|client`. Both live in a plain `method="get"` form with the active tab as a hidden field, so the whole dashboard stays SSR — no client component, no client state, and every view is a shareable URL. Sorting by amount is deliberately absent: the amount lives on `QuoteTier.totalCents` with the rate on `Quote`, so it isn't expressible in the query and would force sorting the whole table in memory
 - ✅ Pagination — `?limit=` (default 20, clamped 20–200), queried as `take: limit + 1` so the extra row is what decides whether to render "Load more"; the link carries the current tab/q/sort. Replaces the old hard `take: 50` cap
-- ✅ Rollups — Open (sum of the highest tier, tax-inc, across `SENT`+`VIEWED`), Won (sum of the *accepted* tier's tax-inc total — `acceptedTierId` is finally load-bearing, not just display) and acceptance rate (`accepted / (accepted + declined + expired)`, shown as `—` rather than a misleading 0% when nothing has been decided). One scoped `findMany` feeds both the rollups and the tab counts. The sums run in JS because the amount lives on the tier and the rate on the quote — no SQL `SUM` available. That's a full scan of one operator's quotes per dashboard load; denormalising a total onto `Quote` isn't worth it at v1 volume
+- ✅ Rollups — Open (sum of the highest tier, tax-inc, across `SENT`+`VIEWED`), Won (sum of the *accepted* tier's tax-inc total — `acceptedTierId` is finally load-bearing, not just display) and acceptance rate (`accepted / (accepted + declined + expired)`, shown as `—` rather than a misleading 0% when nothing has been decided). One scoped `findMany` feeds both the rollups and the tab counts. The sums run in JS because the amount lives on the tier and the rate on the quote — no SQL `SUM` available. That's a full scan of one operator's quotes per dashboard load; denormalising a total onto `Quote` isn't worth it at v1 volume. **The money rollups count only quotes in the business's current currency** — each quote snapshots its own, and adding KES into USD would be a lie; a line under the strip says how many quotes were excluded. Counts and acceptance rate still cover every quote, and each list row is formatted in its own snapshotted currency
 - ✅ Distinct empty states — "no quotes at all" (first-quote CTA) vs. "nothing in this tab / no search matches" (offers Clear filters)
 
 ---
@@ -111,7 +112,8 @@ From `CLAUDE.md` — confirmed absent from the codebase, not planned for this ph
 - Client-side "ask a question" / reply-in-thread on the quote view
 - Per-quote discount (flat or %) applied before tax — deliberately deferred when tax shipped
 - Terms & conditions: default text in Settings with a per-quote override, rendered above the signature on the client view — deferred alongside discount
-- Currency is a hardcoded `$` in `lib/money.ts`; no per-business currency setting
+- Multi-currency reporting — rollups currently cover one currency at a time (see Module 6); a business that switches gets no combined view and no FX conversion
+- Zero-decimal currencies (JPY, KRW) — blocked by the integer-minor-unit storage model, see Module 5
 
 ---
 

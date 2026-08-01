@@ -9,6 +9,7 @@ import { requireAuth, requireDbUser } from "@/lib/auth";
 import { scheduleFollowUps, cancelPendingFollowUps } from "@/lib/follow-ups";
 import { recalcTierTotal } from "@/lib/tiers";
 import { isQuoteLocked, lockedMessage } from "@/lib/quote-lock";
+import { CURRENCY_CODES, normalizeCurrency } from "@/lib/currency";
 
 // ─── Shared quote field validation ────────────────────────────────────────────
 
@@ -20,6 +21,8 @@ const FIELD_LABELS: Record<string, string> = {
   jobAddress: "Job address",
   notes: "Notes",
   validUntil: "Valid until",
+  taxRatePercent: "Tax rate",
+  currency: "Currency",
 };
 
 /** Turns a zod failure into something the user can act on, not "Invalid form data". */
@@ -96,8 +99,9 @@ export async function createQuote(formData: FormData) {
     data: {
       ...quoteData,
       userId: user.id,
-      // Snapshot the business rate so later Settings changes don't rewrite sent quotes
+      // Snapshot rate and currency so later Settings changes don't rewrite sent quotes
       taxRatePercent: user.taxRatePercent,
+      currency: normalizeCurrency(user.currency),
       tiers: {
         create: [
           { label: "GOOD", totalCents: 0 },
@@ -157,6 +161,10 @@ const updateQuoteSchema = z.object({
     .number("must be a number")
     .min(0, "cannot be negative")
     .max(100, "cannot exceed 100"),
+  currency: z.enum(
+    CURRENCY_CODES as unknown as [string, ...string[]],
+    "must be a supported currency"
+  ),
 });
 
 export async function updateQuote(

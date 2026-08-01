@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateQuote } from "@/app/actions/quotes";
+import { CURRENCIES } from "@/lib/currency";
 
 type QuoteDetails = {
   id: string;
@@ -13,6 +14,7 @@ type QuoteDetails = {
   notes: string | null;
   validUntil: string | null;
   taxRatePercent: number;
+  currency: string;
 };
 
 const INPUT_CLASS =
@@ -39,6 +41,7 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
         notes: String(fd.get("notes") ?? ""),
         validUntil: String(fd.get("validUntil") ?? ""),
         taxRatePercent: Number(fd.get("taxRatePercent") ?? 0),
+        currency: String(fd.get("currency") ?? quote.currency),
       });
       if (result?.error) {
         setError(result.error);
@@ -171,6 +174,27 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
           />
           <p className="mt-1.5 text-xs text-zinc-500">
             Applies to this quote only. Defaults from your business profile.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1.5" htmlFor="currency">
+            Currency
+          </label>
+          <select
+            id="currency"
+            name="currency"
+            defaultValue={quote.currency}
+            className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-xs text-zinc-500">
+            Relabels this quote only — amounts are not converted.
           </p>
         </div>
 

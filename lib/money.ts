@@ -1,14 +1,35 @@
+import { DEFAULT_CURRENCY, normalizeCurrency } from "@/lib/currency";
+
 /**
  * Money is stored as integer cents everywhere in this app. Formatting used to be
- * `(cents / 100).toLocaleString()` inline on each page, which renders 123450 as
- * "$1,234.5" — fine while every price was round, wrong the moment tax is added.
+ * `$${(cents / 100).toLocaleString()}` inline on each page, which renders 123450
+ * as "$1,234.5" and hardcodes the dollar sign for every business.
+ *
+ * The currency comes from the quote (snapshotted from the business profile at
+ * creation), so changing the Settings currency never relabels amounts on quotes
+ * that are already out with clients.
  */
+export function formatMoney(
+  cents: number,
+  currency: string = DEFAULT_CURRENCY
+): string {
+  const code = normalizeCurrency(currency);
+  const amount = cents / 100;
 
-export function formatMoney(cents: number): string {
-  return `$${(cents / 100).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    // Intl throws on an unknown code — still show the amount, just prefixed
+    return `${code} ${amount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
 }
 
 export type Totals = {

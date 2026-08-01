@@ -73,6 +73,7 @@ export default async function QuoteEditPage({
               ? quote.validUntil.toISOString().slice(0, 10)
               : null,
             taxRatePercent,
+            currency: quote.currency,
           }}
         />
 
@@ -82,6 +83,7 @@ export default async function QuoteEditPage({
           templates={templates}
           taxRatePercent={taxRatePercent}
           userTradeType={user.tradeType}
+          currency={quote.currency}
         />
         <PhotoManager quoteId={id} photos={quote.photos} />
       </div>

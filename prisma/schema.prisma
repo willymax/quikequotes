@@ -60,6 +60,8 @@ model User {
   tradeType    TradeType @default(OTHER)
   // Default tax rate as a percentage (e.g. 16.00). Snapshotted onto each new quote.
   taxRatePercent Decimal @default(0) @db.Decimal(5, 2)
+  // ISO 4217 code. Snapshotted onto each new quote — see lib/currency.ts
+  currency     String    @default("USD") @db.VarChar(3)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -82,6 +84,8 @@ model Quote {
   validUntil     DateTime?
   // Snapshot of the business tax rate at creation time, overridable per quote
   taxRatePercent Decimal   @default(0) @db.Decimal(5, 2)
+  // Snapshot of the business currency, so changing it never relabels sent quotes
+  currency       String    @default("USD") @db.VarChar(3)
   shareToken     String      @unique @default(cuid())
   status         QuoteStatus @default(DRAFT)
   viewedAt       DateTime?

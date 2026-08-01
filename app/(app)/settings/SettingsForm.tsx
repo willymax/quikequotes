@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { updateBusinessProfile } from "@/app/actions/settings";
+import { CURRENCIES } from "@/lib/currency";
 
 type User = {
   businessName: string | null;
@@ -9,6 +10,7 @@ type User = {
   logoUrl: string | null;
   tradeType: string;
   taxRatePercent: number;
+  currency: string;
 };
 
 const TRADE_TYPES = [
@@ -144,6 +146,28 @@ export function SettingsForm({ user }: { user: User }) {
         <p className="mt-1.5 text-xs text-zinc-500">
           Applied to new quotes. Set 0 for no tax — you can still override the rate
           on an individual quote.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1.5" htmlFor="currency">
+          Currency <span className="text-red-500">*</span>
+        </label>
+        <select
+          id="currency"
+          name="currency"
+          defaultValue={user.currency}
+          className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900"
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1.5 text-xs text-zinc-500">
+          Applied to new quotes. Quotes already sent keep the currency they were
+          created with — changing this never relabels an amount a client has seen.
         </p>
       </div>
 

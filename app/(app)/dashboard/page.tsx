@@ -3,6 +3,7 @@ import type { Prisma, QuoteStatus } from "@prisma/client";
 import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatMoney, quoteTotals } from "@/lib/money";
+import { normalizeCurrency } from "@/lib/currency";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   DRAFT: { label: "Draft", color: "bg-zinc-100 text-zinc-600" },
@@ -81,18 +82,30 @@ export default async function DashboardPage({
     select: {
       status: true,
       taxRatePercent: true,
+      currency: true,
       acceptedTierId: true,
       tiers: { select: { id: true, totalCents: true } },
     },
   });
 
+  // Each quote snapshots its own currency, so the money rollups only add up
+  // quotes in the business's current one — summing KES into USD would be a lie.
+  // Counts and acceptance rate still cover every quote.
+  const rollupCurrency = normalizeCurrency(user.currency);
+
   const counts = new Map<string, number>();
   let pipelineCents = 0;
   let wonCents = 0;
+  let otherCurrencyCount = 0;
 
   for (const q of allQuotes) {
     counts.set(q.status, (counts.get(q.status) ?? 0) + 1);
     const rate = Number(q.taxRatePercent);
+
+    if (normalizeCurrency(q.currency) !== rollupCurrency) {
+      otherCurrencyCount += 1;
+      continue;
+    }
 
     if (q.status === "SENT" || q.status === "VIEWED") {
       pipelineCents += Math.max(
@@ -140,6 +153,7 @@ export default async function DashboardPage({
       status: true,
       createdAt: true,
       taxRatePercent: true,
+      currency: true,
       tiers: { select: { totalCents: true, label: true } },
     },
     orderBy: SORTS[sort],
@@ -191,14 +205,22 @@ export default async function DashboardPage({
       </div>
 
       {/* Rollups */}
-      <div className="grid grid-cols-3 gap-2 mb-5">
-        <Stat label="Open" value={formatMoney(pipelineCents)} />
-        <Stat label="Won" value={formatMoney(wonCents)} />
+      <div className="grid grid-cols-3 gap-2 mb-2">
+        <Stat label="Open" value={formatMoney(pipelineCents, rollupCurrency)} />
+        <Stat label="Won" value={formatMoney(wonCents, rollupCurrency)} />
         <Stat
           label="Accepted"
           value={acceptanceRate === null ? "—" : `${acceptanceRate}%`}
         />
       </div>
+
+      {otherCurrencyCount > 0 && (
+        <p className="text-[11px] text-zinc-400 mb-4">
+          Open and Won cover {rollupCurrency} only — {otherCurrencyCount} quote
+          {otherCurrencyCount === 1 ? "" : "s"} in another currency
+          {otherCurrencyCount === 1 ? " is" : " are"} excluded.
+        </p>
+      )}
 
       {/* Status tabs */}
       <div className="flex gap-2 overflow-x-auto whitespace-nowrap -mx-4 px-4 pb-1 mb-4">
@@ -289,7 +311,7 @@ export default async function DashboardPage({
                     </div>
                     {best > 0 && (
                       <p className="mt-2 text-sm font-medium">
-                        Up to {formatMoney(best)}
+                        Up to {formatMoney(best, quote.currency)}
                       </p>
                     )}
                     <p className="mt-1 text-xs text-zinc-400">

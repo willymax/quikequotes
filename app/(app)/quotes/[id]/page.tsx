@@ -42,6 +42,7 @@ export default async function QuoteDetailPage({
   const taxRatePercent = Number(quote.taxRatePercent);
   const acceptedTier = quote.tiers.find((t) => t.id === quote.acceptedTierId);
   const locked = isQuoteLocked(quote.status);
+  const currency = quote.currency;
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
@@ -111,14 +112,16 @@ export default async function QuoteDetailPage({
                     </span>
                   )}
                 </span>
-                <span className="font-bold text-lg">{formatMoney(totals.totalCents)}</span>
+                <span className="font-bold text-lg">
+                  {formatMoney(totals.totalCents, currency)}
+                </span>
               </div>
               {tier.lineItems.length > 0 && (
                 <ul className="space-y-1">
                   {tier.lineItems.map((item) => (
                     <li key={item.id} className="flex justify-between text-sm text-zinc-600">
                       <span>{item.description}</span>
-                      <span>{formatMoney(item.totalCents)}</span>
+                      <span>{formatMoney(item.totalCents, currency)}</span>
                     </li>
                   ))}
                 </ul>
@@ -127,15 +130,15 @@ export default async function QuoteDetailPage({
                 <div className="mt-3 pt-3 border-t border-zinc-100 space-y-1 text-sm">
                   <div className="flex justify-between text-zinc-500">
                     <span>Subtotal</span>
-                    <span>{formatMoney(totals.subtotalCents)}</span>
+                    <span>{formatMoney(totals.subtotalCents, currency)}</span>
                   </div>
                   <div className="flex justify-between text-zinc-500">
                     <span>Tax ({taxRatePercent}%)</span>
-                    <span>{formatMoney(totals.taxCents)}</span>
+                    <span>{formatMoney(totals.taxCents, currency)}</span>
                   </div>
                   <div className="flex justify-between font-semibold text-zinc-900">
                     <span>Total</span>
-                    <span>{formatMoney(totals.totalCents)}</span>
+                    <span>{formatMoney(totals.totalCents, currency)}</span>
                   </div>
                 </div>
               )}
@@ -158,7 +161,8 @@ export default async function QuoteDetailPage({
               —{" "}
               <span className="font-medium">
                 {formatMoney(
-                  quoteTotals(acceptedTier.totalCents, taxRatePercent).totalCents
+                  quoteTotals(acceptedTier.totalCents, taxRatePercent).totalCents,
+                  currency
                 )}
               </span>
             </p>

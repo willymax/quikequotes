@@ -47,13 +47,13 @@ export default async function SignPage({
           </span>{" "}
           option for{" "}
           <span className="font-semibold text-zinc-700">
-            {formatMoney(totals.totalCents)}
+            {formatMoney(totals.totalCents, quote.currency)}
           </span>
         </p>
         {taxRatePercent > 0 && (
           <p className="text-sm text-zinc-500 mt-1">
-            {formatMoney(totals.subtotalCents)} + {formatMoney(totals.taxCents)}{" "}
-            tax ({taxRatePercent}%)
+            {formatMoney(totals.subtotalCents, quote.currency)} +{" "}
+            {formatMoney(totals.taxCents, quote.currency)} tax ({taxRatePercent}%)
           </p>
         )}
       </div>

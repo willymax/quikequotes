@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { normalizeCurrency } from "@/lib/currency";
 import { SettingsForm } from "./SettingsForm";
 import { SignOutButton } from "./SignOutButton";
 
@@ -14,6 +15,7 @@ export default async function SettingsPage() {
     tradeType: user?.tradeType ?? "OTHER",
     // Prisma Decimal isn't serializable across the Server→Client boundary
     taxRatePercent: Number(user?.taxRatePercent ?? 0),
+    currency: normalizeCurrency(user?.currency),
   };
 
   return (

@@ -54,6 +54,7 @@ export default async function ClientQuotePage({
   const isActive = ["SENT", "VIEWED"].includes(quote.status);
   const taxRatePercent = Number(quote.taxRatePercent);
   const acceptedTier = quote.tiers.find((t) => t.id === quote.acceptedTierId);
+  const currency = quote.currency;
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
@@ -105,7 +106,8 @@ export default async function ClientQuotePage({
               option —{" "}
               <span className="font-semibold">
                 {formatMoney(
-                  quoteTotals(acceptedTier.totalCents, taxRatePercent).totalCents
+                  quoteTotals(acceptedTier.totalCents, taxRatePercent).totalCents,
+                  currency
                 )}
               </span>
             </p>
@@ -183,7 +185,7 @@ export default async function ClientQuotePage({
                     )}
                   </span>
                   <span className="text-2xl font-bold">
-                    {formatMoney(totals.totalCents)}
+                    {formatMoney(totals.totalCents, currency)}
                   </span>
                 </div>
                 {tier.description && (
@@ -195,7 +197,7 @@ export default async function ClientQuotePage({
                       <li key={item.id} className="flex justify-between text-sm">
                         <span className="text-zinc-700">{item.description}</span>
                         <span className="font-medium text-zinc-900">
-                          {formatMoney(item.totalCents)}
+                          {formatMoney(item.totalCents, currency)}
                         </span>
                       </li>
                     ))}
@@ -206,15 +208,15 @@ export default async function ClientQuotePage({
                   <div className="mt-3 pt-3 border-t border-zinc-200/70 space-y-1 text-sm">
                     <div className="flex justify-between text-zinc-600">
                       <span>Subtotal</span>
-                      <span>{formatMoney(totals.subtotalCents)}</span>
+                      <span>{formatMoney(totals.subtotalCents, currency)}</span>
                     </div>
                     <div className="flex justify-between text-zinc-600">
                       <span>Tax ({taxRatePercent}%)</span>
-                      <span>{formatMoney(totals.taxCents)}</span>
+                      <span>{formatMoney(totals.taxCents, currency)}</span>
                     </div>
                     <div className="flex justify-between font-bold text-zinc-900">
                       <span>Total</span>
-                      <span>{formatMoney(totals.totalCents)}</span>
+                      <span>{formatMoney(totals.totalCents, currency)}</span>
                     </div>
                   </div>
                 )}

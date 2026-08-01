@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { CURRENCY_CODES, DEFAULT_CURRENCY } from "@/lib/currency";
 
 const profileSchema = z.object({
   businessName: z.string().min(1).max(100),
@@ -20,6 +21,7 @@ const profileSchema = z.object({
   ]),
   logoUrl: z.string().url().optional().or(z.literal("")),
   taxRatePercent: z.coerce.number().min(0).max(100),
+  currency: z.enum(CURRENCY_CODES as unknown as [string, ...string[]]),
 });
 
 export async function updateBusinessProfile(formData: FormData) {
@@ -31,6 +33,7 @@ export async function updateBusinessProfile(formData: FormData) {
     tradeType: formData.get("tradeType"),
     logoUrl: formData.get("logoUrl") || undefined,
     taxRatePercent: formData.get("taxRatePercent") || 0,
+    currency: formData.get("currency") || DEFAULT_CURRENCY,
   });
 
   if (!parsed.success) {
