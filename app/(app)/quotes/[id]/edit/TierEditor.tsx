@@ -11,18 +11,14 @@ import {
 } from "@/app/actions/quotes";
 import { applyTemplate, createCustomTemplate } from "@/app/actions/templates";
 import { formatMoney, quoteTotals } from "@/lib/money";
+import { matchesTrade, tradeLabel } from "@/lib/trades";
+import { TradeFilterChips } from "@/app/components/TradeFilterChips";
 
-type Template = { id: string; name: string; tradeType: string };
-
-const TRADE_LABELS: Record<string, string> = {
-  PAINTING: "Painting",
-  PRESSURE_WASHING: "Pressure Washing",
-  CLEANING: "Cleaning",
-  HVAC: "HVAC",
-  LANDSCAPING: "Landscaping",
-  FUMIGATION: "Fumigation",
-  MOVING_SERVICES: "Moving Services",
-  OTHER: "Other",
+type Template = {
+  id: string;
+  name: string;
+  tradeType: string;
+  userId: string | null;
 };
 
 type LineItem = {
@@ -65,11 +61,13 @@ export function TierEditor({
   quoteId,
   templates,
   taxRatePercent,
+  userTradeType,
 }: {
   tiers: Tier[];
   quoteId: string;
   templates: Template[];
   taxRatePercent: number;
+  userTradeType: string;
 }) {
   const [activeTab, setActiveTab] = useState(tiers[0]?.label ?? "GOOD");
 
@@ -78,7 +76,11 @@ export function TierEditor({
 
   return (
     <div>
-      <TemplateToolbar quoteId={quoteId} templates={templates} />
+      <TemplateToolbar
+        quoteId={quoteId}
+        templates={templates}
+        userTradeType={userTradeType}
+      />
 
       {/* Tab selector */}
       <div className="flex rounded-xl border border-zinc-200 overflow-hidden mb-4">
@@ -417,10 +419,23 @@ function EditLineItemForm({
   );
 }
 
-function TemplateToolbar({ quoteId, templates }: { quoteId: string; templates: Template[] }) {
+function TemplateToolbar({
+  quoteId,
+  templates,
+  userTradeType,
+}: {
+  quoteId: string;
+  templates: Template[];
+  userTradeType: string;
+}) {
   const [mode, setMode] = useState<"none" | "apply" | "save">("none");
   const [isPending, startTransition] = useTransition();
   const [saveName, setSaveName] = useState("");
+  const [allTrades, setAllTrades] = useState(false);
+
+  const visible = templates.filter((t) =>
+    matchesTrade(t, userTradeType, allTrades)
+  );
 
   function handleApply(templateId: string) {
     if (!window.confirm("This replaces all current line items in every tier. Continue?")) {
@@ -472,10 +487,18 @@ function TemplateToolbar({ quoteId, templates }: { quoteId: string; templates: T
   if (mode === "apply") {
     return (
       <div className="space-y-2 mb-4">
-        {templates.length === 0 ? (
-          <p className="text-sm text-zinc-500">No templates available.</p>
+        <TradeFilterChips
+          userTradeType={userTradeType}
+          allTrades={allTrades}
+          onChange={setAllTrades}
+        />
+        {visible.length === 0 ? (
+          <p className="text-sm text-zinc-500">
+            No {tradeLabel(userTradeType)} templates yet — tap{" "}
+            <strong>All trades</strong> to browse the rest.
+          </p>
         ) : (
-          templates.map((t) => (
+          visible.map((t) => (
             <button
               key={t.id}
               type="button"
@@ -485,7 +508,8 @@ function TemplateToolbar({ quoteId, templates }: { quoteId: string; templates: T
             >
               <p className="font-semibold text-sm">{t.name}</p>
               <p className="text-xs text-zinc-500 mt-0.5">
-                {TRADE_LABELS[t.tradeType] ?? t.tradeType}
+                {tradeLabel(t.tradeType)}
+                {t.userId !== null && " · Mine"}
               </p>
             </button>
           ))

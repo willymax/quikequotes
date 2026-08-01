@@ -7,6 +7,8 @@ import { addDays } from "date-fns";
 import { db } from "@/lib/db";
 import { requireAuth, requireDbUser } from "@/lib/auth";
 import { scheduleFollowUps, cancelPendingFollowUps } from "@/lib/follow-ups";
+import { recalcTierTotal } from "@/lib/tiers";
+import { isQuoteLocked, lockedMessage } from "@/lib/quote-lock";
 
 // ─── Shared quote field validation ────────────────────────────────────────────
 
@@ -134,6 +136,9 @@ export async function createQuote(formData: FormData) {
               sortOrder: idx,
             })),
           });
+          // Tiers are created at 0 — without this the option shows $0 until the
+          // user edits an item and trips the recalc by hand
+          await recalcTierTotal(tier.id);
         }
       }
     }
@@ -159,7 +164,10 @@ export async function updateQuote(
   data: z.input<typeof updateQuoteSchema>
 ) {
   const authUser = await requireAuth();
-  await assertQuoteOwner(quoteId, authUser.id);
+  const { quote } = await assertQuoteOwner(quoteId, authUser.id);
+  if (isQuoteLocked(quote.status)) {
+    return { error: lockedMessage(quote.status) };
+  }
 
   const parsed = updateQuoteSchema.safeParse(data);
   if (!parsed.success) return { error: describeIssues(parsed.error) };
@@ -189,7 +197,12 @@ export async function updateQuote(
 
 export async function sendQuote(quoteId: string) {
   const authUser = await requireAuth();
-  const user = await assertQuoteOwner(quoteId, authUser.id);
+  const { user, quote: owned } = await assertQuoteOwner(quoteId, authUser.id);
+  // Also protects the status column: this action writes SENT unconditionally, so
+  // without the guard a re-send would downgrade an ACCEPTED quote back to SENT
+  if (isQuoteLocked(owned.status)) {
+    return { error: lockedMessage(owned.status) };
+  }
 
   const quote = await db.quote.findUnique({
     where: { id: quoteId },
@@ -233,11 +246,14 @@ export async function deleteTier(tierId: string) {
 
   const tier = await db.quoteTier.findUnique({
     where: { id: tierId },
-    include: { quote: { select: { id: true, userId: true } } },
+    include: { quote: { select: { id: true, userId: true, status: true } } },
   });
   if (!tier) return { error: "Option not found" };
 
   await assertUserOwnsQuote(tier.quote.userId, authUser.id);
+  if (isQuoteLocked(tier.quote.status)) {
+    return { error: lockedMessage(tier.quote.status) };
+  }
 
   const remaining = await db.quoteTier.count({
     where: { quoteId: tier.quote.id },
@@ -253,7 +269,10 @@ export async function deleteTier(tierId: string) {
 
 export async function addTier(quoteId: string, label: string) {
   const authUser = await requireAuth();
-  await assertQuoteOwner(quoteId, authUser.id);
+  const { quote } = await assertQuoteOwner(quoteId, authUser.id);
+  if (isQuoteLocked(quote.status)) {
+    return { error: lockedMessage(quote.status) };
+  }
 
   const parsedLabel = tierLabelSchema.safeParse(label);
   if (!parsedLabel.success) return { error: "Unknown option" };
@@ -286,11 +305,14 @@ export async function addLineItem(tierId: string, formData: FormData) {
 
   const tier = await db.quoteTier.findUnique({
     where: { id: tierId },
-    include: { quote: { select: { id: true, userId: true } } },
+    include: { quote: { select: { id: true, userId: true, status: true } } },
   });
   if (!tier) return { error: "Tier not found" };
 
   await assertUserOwnsQuote(tier.quote.userId, supabaseId);
+  if (isQuoteLocked(tier.quote.status)) {
+    return { error: lockedMessage(tier.quote.status) };
+  }
 
   const parsed = lineItemSchema.safeParse({
     description: formData.get("description"),
@@ -330,12 +352,19 @@ export async function updateLineItem(
   const item = await db.lineItem.findUnique({
     where: { id: lineItemId },
     include: {
-      tier: { include: { quote: { select: { id: true, userId: true } } } },
+      tier: {
+        include: {
+          quote: { select: { id: true, userId: true, status: true } },
+        },
+      },
     },
   });
   if (!item) return { error: "Line item not found" };
 
   await assertUserOwnsQuote(item.tier.quote.userId, supabaseId);
+  if (isQuoteLocked(item.tier.quote.status)) {
+    return { error: lockedMessage(item.tier.quote.status) };
+  }
 
   const qty = data.quantity ?? Number(item.quantity);
   const unit = data.unitCents ?? item.unitCents;
@@ -360,12 +389,19 @@ export async function deleteLineItem(lineItemId: string) {
   const item = await db.lineItem.findUnique({
     where: { id: lineItemId },
     include: {
-      tier: { include: { quote: { select: { id: true, userId: true } } } },
+      tier: {
+        include: {
+          quote: { select: { id: true, userId: true, status: true } },
+        },
+      },
     },
   });
   if (!item) return { error: "Line item not found" };
 
   await assertUserOwnsQuote(item.tier.quote.userId, supabaseId);
+  if (isQuoteLocked(item.tier.quote.status)) {
+    return { error: lockedMessage(item.tier.quote.status) };
+  }
 
   await db.lineItem.delete({ where: { id: lineItemId } });
   await recalcTierTotal(item.tierId);
@@ -382,11 +418,14 @@ export async function updateTierDescription(
 
   const tier = await db.quoteTier.findUnique({
     where: { id: tierId },
-    include: { quote: { select: { id: true, userId: true } } },
+    include: { quote: { select: { id: true, userId: true, status: true } } },
   });
   if (!tier) return { error: "Tier not found" };
 
   await assertUserOwnsQuote(tier.quote.userId, supabaseId);
+  if (isQuoteLocked(tier.quote.status)) {
+    return { error: lockedMessage(tier.quote.status) };
+  }
 
   await db.quoteTier.update({ where: { id: tierId }, data: { description } });
   revalidatePath(`/quotes/${tier.quote.id}/edit`);
@@ -455,6 +494,11 @@ export async function acceptQuote(data: z.infer<typeof acceptSchema>) {
 export async function declineQuote(token: string) {
   const quote = await db.quote.findUnique({ where: { shareToken: token } });
   if (!quote) return { error: "Quote not found" };
+  // Same gate acceptQuote uses — without it anyone holding the share link could
+  // flip an already-accepted quote to DECLINED
+  if (!["SENT", "VIEWED"].includes(quote.status)) {
+    return { error: "Quote is no longer available" };
+  }
 
   await db.quote.update({
     where: { id: quote.id },
@@ -476,19 +520,10 @@ async function assertQuoteOwner(quoteId: string, authId: string) {
   const quote = await db.quote.findUnique({ where: { id: quoteId } });
   if (!quote || quote.userId !== user.id) throw new Error("Unauthorized");
 
-  return user;
+  return { user, quote };
 }
 
 async function assertUserOwnsQuote(userId: string, authId: string) {
   const user = await db.user.findUnique({ where: { supabaseId: authId } });
   if (!user || user.id !== userId) throw new Error("Unauthorized");
-}
-
-async function recalcTierTotal(tierId: string) {
-  const items = await db.lineItem.findMany({ where: { tierId } });
-  const total = items.reduce((sum, item) => sum + item.totalCents, 0);
-  await db.quoteTier.update({
-    where: { id: tierId },
-    data: { totalCents: total },
-  });
 }

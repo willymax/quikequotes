@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireDbUser } from "@/lib/auth";
+import { recalcTierTotal } from "@/lib/tiers";
+import { isQuoteLocked, lockedMessage } from "@/lib/quote-lock";
 
 export async function applyTemplate(quoteId: string, templateId: string) {
   const user = await requireDbUser();
@@ -12,6 +14,9 @@ export async function applyTemplate(quoteId: string, templateId: string) {
     include: { tiers: true },
   });
   if (!quote) return { error: "Quote not found" };
+  if (isQuoteLocked(quote.status)) {
+    return { error: lockedMessage(quote.status) };
+  }
 
   const template = await db.template.findUnique({
     where: { id: templateId },
@@ -40,14 +45,11 @@ export async function applyTemplate(quoteId: string, templateId: string) {
       });
     }
 
-    const totalCents = tierItems.reduce((sum, i) => sum + i.unitCents, 0);
-    await db.quoteTier.update({
-      where: { id: tier.id },
-      data: { totalCents },
-    });
+    await recalcTierTotal(tier.id);
   }
 
   revalidatePath(`/quotes/${quoteId}/edit`);
+  revalidatePath(`/quotes/${quoteId}`);
   return { success: true };
 }
 

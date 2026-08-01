@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatMoney, quoteTotals } from "@/lib/money";
+import { isQuoteLocked, lockedMessage } from "@/lib/quote-lock";
 import { SendQuoteButton } from "./SendQuoteButton";
 import { CopyLinkButton } from "./CopyLinkButton";
 
@@ -40,6 +41,7 @@ export default async function QuoteDetailPage({
   const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL}/q/${quote.shareToken}`;
   const taxRatePercent = Number(quote.taxRatePercent);
   const acceptedTier = quote.tiers.find((t) => t.id === quote.acceptedTierId);
+  const locked = isQuoteLocked(quote.status);
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
@@ -54,23 +56,36 @@ export default async function QuoteDetailPage({
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3">
-        <Link
-          href={`/quotes/${quote.id}/edit`}
-          className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm flex items-center justify-center"
-        >
-          Edit
-        </Link>
-        {["DRAFT", "SENT", "VIEWED"].includes(quote.status) && (
-          <SendQuoteButton quoteId={quote.id} status={quote.status} />
-        )}
-      </div>
+      {locked ? (
+        <p className="text-sm text-zinc-500 rounded-xl bg-zinc-50 px-4 py-3">
+          {lockedMessage(quote.status)}
+        </p>
+      ) : (
+        <div className="flex gap-3">
+          <Link
+            href={`/quotes/${quote.id}/edit`}
+            className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm flex items-center justify-center"
+          >
+            Edit
+          </Link>
+          {["DRAFT", "SENT", "VIEWED"].includes(quote.status) && (
+            <SendQuoteButton quoteId={quote.id} status={quote.status} />
+          )}
+        </div>
+      )}
 
       {/* Share link */}
       {quote.status !== "DRAFT" && (
         <div className="rounded-2xl bg-zinc-50 p-4">
           <p className="text-xs text-zinc-500 mb-1.5 font-medium">Client Link</p>
-          <p className="text-sm font-mono break-all text-zinc-800">{publicUrl}</p>
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-mono break-all text-blue-700 underline underline-offset-2"
+          >
+            {publicUrl}
+          </a>
           <CopyLinkButton publicUrl={publicUrl} />
         </div>
       )}

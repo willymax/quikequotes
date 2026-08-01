@@ -1,28 +1,26 @@
+import Link from "next/link";
 import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
+import { templateScope, TEMPLATE_ORDER } from "@/lib/templates";
+import { matchesTrade, tradeLabel } from "@/lib/trades";
 
-const TRADE_LABELS: Record<string, string> = {
-  PAINTING: "Painting",
-  PRESSURE_WASHING: "Pressure Washing",
-  CLEANING: "Cleaning",
-  HVAC: "HVAC",
-  LANDSCAPING: "Landscaping",
-  FUMIGATION: "Fumigation",
-  MOVING_SERVICES: "Moving Services",
-  OTHER: "Other",
-};
-
-export default async function TemplatesPage() {
+export default async function TemplatesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ trades?: string }>;
+}) {
   const user = await requireDbUser();
+  const { trades } = await searchParams;
+  const allTrades = trades === "all";
 
-  const templates = await db.template.findMany({
-    where: {
-      OR: [{ userId: null }, { userId: user.id }],
-    },
+  const all = await db.template.findMany({
+    where: templateScope(user.id),
     include: { items: { orderBy: { sortOrder: "asc" } } },
-    orderBy: [{ isDefault: "desc" }, { name: "asc" }],
+    orderBy: TEMPLATE_ORDER,
   });
+
+  const templates = all.filter((t) => matchesTrade(t, user.tradeType, allTrades));
 
   const TIER_ORDER = ["GOOD", "BETTER", "BEST"] as const;
   const TIER_HEADERS: Record<string, string> = {
@@ -34,9 +32,33 @@ export default async function TemplatesPage() {
   return (
     <div className="max-w-lg mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Templates</h1>
-      <p className="text-sm text-zinc-500 mb-6">
+      <p className="text-sm text-zinc-500 mb-4">
         Templates pre-fill your line items when creating a quote.
       </p>
+
+      {/* Server-rendered chips — the state lives in the URL, so it survives reload */}
+      <div className="flex gap-2 mb-6">
+        <Link
+          href="/templates"
+          className={`h-8 px-3 rounded-full text-xs font-medium flex items-center ${
+            allTrades
+              ? "border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
+              : "bg-zinc-900 text-white"
+          }`}
+        >
+          {tradeLabel(user.tradeType)}
+        </Link>
+        <Link
+          href="/templates?trades=all"
+          className={`h-8 px-3 rounded-full text-xs font-medium flex items-center ${
+            allTrades
+              ? "bg-zinc-900 text-white"
+              : "border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
+          }`}
+        >
+          All trades
+        </Link>
+      </div>
 
       <div className="space-y-4">
         {templates.map((template) => {
@@ -54,8 +76,8 @@ export default async function TemplatesPage() {
                 <div>
                   <p className="font-semibold">{template.name}</p>
                   <p className="text-xs text-zinc-500 mt-0.5">
-                    {TRADE_LABELS[template.tradeType] ?? template.tradeType}
-                    {template.userId === null && " · System"}
+                    {tradeLabel(template.tradeType)}
+                    {template.userId === null ? " · System" : " · Mine"}
                     {" · "}
                     {template.items.length} item{template.items.length === 1 ? "" : "s"}
                   </p>
@@ -93,8 +115,15 @@ export default async function TemplatesPage() {
         })}
 
         {templates.length === 0 && (
-          <p className="text-center text-zinc-500 py-8">
-            No templates yet. Create a quote and save it as a template.
+          <p className="text-center text-zinc-500 py-8 text-sm">
+            {all.length > 0 ? (
+              <>
+                No {tradeLabel(user.tradeType)} templates yet — tap{" "}
+                <strong>All trades</strong> to browse the rest.
+              </>
+            ) : (
+              "No templates yet. Create a quote and save it as a template."
+            )}
           </p>
         )}
       </div>

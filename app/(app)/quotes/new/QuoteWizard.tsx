@@ -2,22 +2,14 @@
 
 import { useRef, useState, useTransition } from "react";
 import { createQuote } from "@/app/actions/quotes";
+import { matchesTrade, tradeLabel } from "@/lib/trades";
+import { TradeFilterChips } from "@/app/components/TradeFilterChips";
 
 type Template = {
   id: string;
   name: string;
   tradeType: string;
-};
-
-const TRADE_LABELS: Record<string, string> = {
-  PAINTING: "Painting",
-  PRESSURE_WASHING: "Pressure Washing",
-  CLEANING: "Cleaning",
-  HVAC: "HVAC",
-  LANDSCAPING: "Landscaping",
-  FUMIGATION: "Fumigation",
-  MOVING_SERVICES: "Moving Services",
-  OTHER: "Other",
+  userId: string | null;
 };
 
 type Step = 1 | 2 | 3;
@@ -37,10 +29,20 @@ type ClientFields = {
   notes: string;
 };
 
-export function QuoteWizard({ templates }: { templates: Template[] }) {
+export function QuoteWizard({
+  templates,
+  userTradeType,
+}: {
+  templates: Template[];
+  userTradeType: string;
+}) {
   const step1FormRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState<Step>(1);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [allTrades, setAllTrades] = useState(false);
+  const visibleTemplates = templates.filter((t) =>
+    matchesTrade(t, userTradeType, allTrades)
+  );
   const [clientFields, setClientFields] = useState<ClientFields>({
     title: "", clientName: "", clientPhone: "", clientEmail: "", jobAddress: "", notes: "",
   });
@@ -236,6 +238,12 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
               Templates pre-fill your line items. You can customize everything after.
             </p>
 
+            <TradeFilterChips
+              userTradeType={userTradeType}
+              allTrades={allTrades}
+              onChange={setAllTrades}
+            />
+
             <div className="space-y-3">
               <button
                 type="button"
@@ -250,7 +258,7 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
                 <p className="text-sm text-zinc-500 mt-0.5">Add line items manually</p>
               </button>
 
-              {templates.map((t) => (
+              {visibleTemplates.map((t) => (
                 <button
                   key={t.id}
                   type="button"
@@ -263,10 +271,18 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
                 >
                   <p className="font-semibold">{t.name}</p>
                   <p className="text-sm text-zinc-500 mt-0.5">
-                    {TRADE_LABELS[t.tradeType] ?? t.tradeType}
+                    {tradeLabel(t.tradeType)}
+                    {t.userId !== null && " · Mine"}
                   </p>
                 </button>
               ))}
+
+              {visibleTemplates.length === 0 && (
+                <p className="text-sm text-zinc-500 px-1">
+                  No {tradeLabel(userTradeType)} templates yet — tap{" "}
+                  <strong>All trades</strong> to browse the rest.
+                </p>
+              )}
             </div>
 
             <button

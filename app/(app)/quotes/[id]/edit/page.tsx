@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { isQuoteLocked } from "@/lib/quote-lock";
+import { templateScope, TEMPLATE_ORDER } from "@/lib/templates";
 import { TierEditor } from "./TierEditor";
 import { PhotoManager } from "./PhotoManager";
 import { QuoteDetailsEditor } from "./QuoteDetailsEditor";
@@ -27,6 +29,9 @@ export default async function QuoteEditPage({
 
   if (!quote) notFound();
 
+  // Every mutation on this page refuses a locked quote, so don't render the form
+  if (isQuoteLocked(quote.status)) redirect(`/quotes/${id}`);
+
   // Prisma Decimal isn't serializable across the Server→Client boundary
   const taxRatePercent = Number(quote.taxRatePercent);
 
@@ -39,11 +44,9 @@ export default async function QuoteEditPage({
   }));
 
   const templates = await db.template.findMany({
-    where: {
-      OR: [{ userId: null }, { userId: user.id }],
-    },
-    select: { id: true, name: true, tradeType: true },
-    orderBy: [{ isDefault: "desc" }, { name: "asc" }],
+    where: templateScope(user.id),
+    select: { id: true, name: true, tradeType: true, userId: true },
+    orderBy: TEMPLATE_ORDER,
   });
 
   return (
@@ -78,6 +81,7 @@ export default async function QuoteEditPage({
           quoteId={id}
           templates={templates}
           taxRatePercent={taxRatePercent}
+          userTradeType={user.tradeType}
         />
         <PhotoManager quoteId={id} photos={quote.photos} />
       </div>
