@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { formatMoney, quoteTotals } from "@/lib/money";
 import { SignatureCapture } from "./SignatureCapture";
 
 export default async function SignPage({
@@ -28,6 +29,9 @@ export default async function SignPage({
   const selectedTier = quote.tiers[0];
   if (!selectedTier) notFound();
 
+  const taxRatePercent = Number(quote.taxRatePercent);
+  const totals = quoteTotals(selectedTier.totalCents, taxRatePercent);
+
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
       <a href={`/q/${token}`} className="text-zinc-500 hover:text-zinc-900 text-sm">
@@ -43,9 +47,15 @@ export default async function SignPage({
           </span>{" "}
           option for{" "}
           <span className="font-semibold text-zinc-700">
-            ${(selectedTier.totalCents / 100).toLocaleString()}
+            {formatMoney(totals.totalCents)}
           </span>
         </p>
+        {taxRatePercent > 0 && (
+          <p className="text-sm text-zinc-500 mt-1">
+            {formatMoney(totals.subtotalCents)} + {formatMoney(totals.taxCents)}{" "}
+            tax ({taxRatePercent}%)
+          </p>
+        )}
       </div>
 
       <SignatureCapture

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { formatMoney, quoteTotals } from "@/lib/money";
 
 const TIER_COLORS: Record<string, string> = {
   GOOD: "border-zinc-200 bg-zinc-50",
@@ -51,6 +52,8 @@ export default async function ClientQuotePage({
   }
 
   const isActive = ["SENT", "VIEWED"].includes(quote.status);
+  const taxRatePercent = Number(quote.taxRatePercent);
+  const acceptedTier = quote.tiers.find((t) => t.id === quote.acceptedTierId);
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
@@ -95,6 +98,18 @@ export default async function ClientQuotePage({
       {quote.status === "ACCEPTED" && (
         <div className="rounded-2xl bg-green-50 border border-green-200 p-4">
           <p className="font-semibold text-green-800">Quote Accepted</p>
+          {acceptedTier && (
+            <p className="text-sm text-green-700 mt-0.5">
+              You accepted the{" "}
+              <span className="font-semibold">{TIER_LABELS[acceptedTier.label]}</span>{" "}
+              option —{" "}
+              <span className="font-semibold">
+                {formatMoney(
+                  quoteTotals(acceptedTier.totalCents, taxRatePercent).totalCents
+                )}
+              </span>
+            </p>
+          )}
           {quote.signedByName && (
             <p className="text-sm text-green-700 mt-0.5">
               Signed by {quote.signedByName}
@@ -144,43 +159,77 @@ export default async function ClientQuotePage({
           Options
         </h2>
         <div className="space-y-4">
-          {quote.tiers.map((tier) => (
-            <div
-              key={tier.id}
-              className={`rounded-2xl border-2 p-4 ${TIER_COLORS[tier.label]}`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-lg">{TIER_LABELS[tier.label]}</span>
-                <span className="text-2xl font-bold">
-                  ${(tier.totalCents / 100).toLocaleString()}
-                </span>
-              </div>
-              {tier.description && (
-                <p className="text-sm text-zinc-600 mb-3">{tier.description}</p>
-              )}
-              {tier.lineItems.length > 0 && (
-                <ul className="space-y-1.5">
-                  {tier.lineItems.map((item) => (
-                    <li key={item.id} className="flex justify-between text-sm">
-                      <span className="text-zinc-700">{item.description}</span>
-                      <span className="font-medium text-zinc-900">
-                        ${(item.totalCents / 100).toLocaleString()}
+          {quote.tiers.map((tier) => {
+            const totals = quoteTotals(tier.totalCents, taxRatePercent);
+            const isAccepted = tier.id === quote.acceptedTierId;
+            // Once a choice is made, keep it obvious which card it was
+            const dimmed = Boolean(acceptedTier) && !isAccepted;
+            return (
+              <div
+                key={tier.id}
+                className={`rounded-2xl border-2 p-4 ${
+                  isAccepted
+                    ? "border-green-400 bg-green-50 ring-2 ring-green-200"
+                    : TIER_COLORS[tier.label]
+                } ${dimmed ? "opacity-50" : ""}`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-lg flex items-center gap-2">
+                    {TIER_LABELS[tier.label]}
+                    {isAccepted && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-600 text-white">
+                        Accepted
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                    )}
+                  </span>
+                  <span className="text-2xl font-bold">
+                    {formatMoney(totals.totalCents)}
+                  </span>
+                </div>
+                {tier.description && (
+                  <p className="text-sm text-zinc-600 mb-3">{tier.description}</p>
+                )}
+                {tier.lineItems.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {tier.lineItems.map((item) => (
+                      <li key={item.id} className="flex justify-between text-sm">
+                        <span className="text-zinc-700">{item.description}</span>
+                        <span className="font-medium text-zinc-900">
+                          {formatMoney(item.totalCents)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-              {isActive && (
-                <Link
-                  href={`/q/${token}/sign?tier=${tier.id}`}
-                  className="mt-4 block w-full h-12 rounded-xl bg-zinc-900 text-white font-semibold text-base flex items-center justify-center"
-                >
-                  Accept This Option
-                </Link>
-              )}
-            </div>
-          ))}
+                {taxRatePercent > 0 && (
+                  <div className="mt-3 pt-3 border-t border-zinc-200/70 space-y-1 text-sm">
+                    <div className="flex justify-between text-zinc-600">
+                      <span>Subtotal</span>
+                      <span>{formatMoney(totals.subtotalCents)}</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-600">
+                      <span>Tax ({taxRatePercent}%)</span>
+                      <span>{formatMoney(totals.taxCents)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-zinc-900">
+                      <span>Total</span>
+                      <span>{formatMoney(totals.totalCents)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {isActive && (
+                  <Link
+                    href={`/q/${token}/sign?tier=${tier.id}`}
+                    className="mt-4 block w-full h-12 rounded-xl bg-zinc-900 text-white font-semibold text-base flex items-center justify-center"
+                  >
+                    Accept This Option
+                  </Link>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

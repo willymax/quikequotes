@@ -12,6 +12,8 @@ export default async function SettingsPage() {
     phone: user?.phone ?? null,
     logoUrl: user?.logoUrl ?? null,
     tradeType: user?.tradeType ?? "OTHER",
+    // Prisma Decimal isn't serializable across the Server→Client boundary
+    taxRatePercent: Number(user?.taxRatePercent ?? 0),
   };
 
   return (

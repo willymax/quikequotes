@@ -1,5 +1,6 @@
 import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { formatMoney } from "@/lib/money";
 
 const TRADE_LABELS: Record<string, string> = {
   PAINTING: "Painting",
@@ -77,7 +78,7 @@ export default async function TemplatesPage() {
                             <span>{item.description}</span>
                             {item.unitCents > 0 && (
                               <span className="text-zinc-400 shrink-0">
-                                ${(item.unitCents / 100).toLocaleString()}
+                                {formatMoney(item.unitCents)}
                               </span>
                             )}
                           </li>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { formatMoney, quoteTotals } from "@/lib/money";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   DRAFT: { label: "Draft", color: "bg-zinc-100 text-zinc-600" },
@@ -22,14 +23,21 @@ export default async function DashboardPage() {
       clientName: true,
       status: true,
       createdAt: true,
+      taxRatePercent: true,
       tiers: { select: { totalCents: true, label: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
 
-  const maxTotal = (quote: (typeof quotes)[0]) =>
-    Math.max(...quote.tiers.map((t) => t.totalCents), 0);
+  // Highest tier, tax included — this is the number the owner quoted
+  const maxTotal = (quote: (typeof quotes)[0]) => {
+    const rate = Number(quote.taxRatePercent);
+    return Math.max(
+      ...quote.tiers.map((t) => quoteTotals(t.totalCents, rate).totalCents),
+      0
+    );
+  };
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8">
@@ -78,7 +86,7 @@ export default async function DashboardPage() {
                   </div>
                   {best > 0 && (
                     <p className="mt-2 text-sm font-medium">
-                      Up to ${(best / 100).toLocaleString()}
+                      Up to {formatMoney(best)}
                     </p>
                   )}
                   <p className="mt-1 text-xs text-zinc-400">

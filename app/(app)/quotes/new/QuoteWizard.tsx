@@ -45,6 +45,7 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
     title: "", clientName: "", clientPhone: "", clientEmail: "", jobAddress: "", notes: "",
   });
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   const back = () => setStep((s) => (s > 1 ? (s - 1) as Step : 1));
 
@@ -78,7 +79,12 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
     const fd = new FormData();
     Object.entries(clientFields).forEach(([k, v]) => fd.set(k, v));
     if (selectedTemplate) fd.set("templateId", selectedTemplate);
-    startTransition(() => { void createQuote(fd); });
+    setError(null);
+    startTransition(async () => {
+      // On success createQuote() redirects, so nothing comes back here
+      const result = await createQuote(fd);
+      if (result?.error) setError(result.error);
+    });
   }
 
   return (
@@ -135,6 +141,7 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
                 name="title"
                 type="text"
                 required
+                maxLength={200}
                 defaultValue={clientFields.title}
                 placeholder="Exterior Painting — 123 Main St"
                 className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
@@ -150,6 +157,7 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
                 name="clientName"
                 type="text"
                 required
+                maxLength={100}
                 defaultValue={clientFields.clientName}
                 placeholder="John Smith"
                 className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
@@ -164,6 +172,7 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
                 id="clientPhone"
                 name="clientPhone"
                 type="tel"
+                maxLength={30}
                 placeholder="+1 555 000 0000"
                 className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
               />
@@ -190,6 +199,7 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
                 id="jobAddress"
                 name="jobAddress"
                 type="text"
+                maxLength={200}
                 placeholder="123 Main St, City, State"
                 className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
               />
@@ -203,6 +213,7 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
                 id="notes"
                 name="notes"
                 rows={3}
+                maxLength={1000}
                 placeholder="Any special instructions or scope details..."
                 className="w-full px-4 py-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
               />
@@ -286,6 +297,8 @@ export function QuoteWizard({ templates }: { templates: Template[] }) {
                   : "Blank"}
               </p>
             </div>
+
+            {error && <p className="text-sm text-red-500">{error}</p>}
 
             <button
               type="submit"

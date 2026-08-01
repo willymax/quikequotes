@@ -25,6 +25,11 @@ Legend: ✅ done · 🚧 partial / in-progress · ⬜ not started
 - ✅ Template line items auto-applied to tiers by `tierHint` on create — `createQuote()`
 - ✅ Line item CRUD (add/edit/delete) with tier total recalculation — `app/(app)/quotes/[id]/edit/TierEditor.tsx` + `app/actions/quotes.ts` (`addLineItem`/`updateLineItem`/`deleteLineItem`/`recalcTierTotal`). `LineItem.quantity` (Prisma `Decimal`) is converted to a plain `number` in `edit/page.tsx` before being passed to the client `TierEditor` — Decimal instances aren't serializable across the Server→Client Component boundary and previously threw a dev-mode console error
 - ✅ Tier description editing — `updateTierDescription()` action wired into `TierEditor.tsx`'s `TierDescriptionEditor` component
+- ✅ Edit client/job details after creation — `app/(app)/quotes/[id]/edit/QuoteDetailsEditor.tsx`, collapsed `<details>` panel over the tier editor covering title, client name/phone/email, job address, `validUntil` and notes. Wired to `updateQuote()` in `app/actions/quotes.ts`, which now zod-validates its input, normalizes empty optionals to `null`, revalidates both `/quotes/[id]` and `/quotes/[id]/edit`, and returns `{ success }`/`{ error }`. `validUntil` is stored at **UTC** midnight (`new Date(\`${d}T00:00:00Z\`)`) so it round-trips back into `<input type="date">` via `toISOString().slice(0, 10)` without shifting a day
+- ✅ Edit-page action bar — fixed bar above the app bottom nav with **Done — Review & Send** (→ `/quotes/[id]`) and **Preview as client** (→ `/q/[shareToken]`, new tab), closing the create→edit→send loop that previously dead-ended on the edit screen. No save button: every mutation on the page already persists immediately via server actions
+- ✅ Quote-creation errors surfaced — `QuoteWizard.tsx` awaits `createQuote()` and renders its `{ error }` instead of `void`-discarding it (previously a zod failure looked like the button doing nothing). `createQuote`/`updateQuote` share one `quoteFields` schema and a `describeIssues()` helper that names the offending field ("Client email: must be a valid email address") instead of the opaque "Invalid form data". Inputs in both the wizard and the details editor carry matching `maxLength` caps so length overruns are blocked client-side; `clientPhone` raised 20 → 30 chars for international/formatted numbers
+- ✅ Add / remove options — `deleteTier()` and `addTier()` in `app/actions/quotes.ts`, surfaced in `TierEditor.tsx` as a per-tier "Remove <label> option" button (behind `window.confirm`, hidden on the last remaining tier) and a "+ Add <label> option" row for whichever of Good/Better/Best is missing. `deleteTier` re-checks the last-tier guard server-side; line items cascade via the schema relation. Quotes still start with all three. `TierEditor`'s active tab falls back to `tiers[0]` when the selected option is deleted
+- ✅ Number-input ergonomics — quantity uses `step="any"` (was `step="0.01"`, which made the browser spin/validate in hundredths for a field that's usually `1`); the edit form seeds price from `String(unitCents / 100)` rather than `.toFixed(2)` so an unpriced item reads `0`, not `0.00`; both numeric fields select-on-focus and carry `inputMode="decimal"`
 - ✅ Photo upload — UploadThing integration (`app/api/uploadthing/core.ts`, `route.ts`, `lib/uploadthing.ts`), `addPhoto`/`deletePhoto` actions in `app/actions/photos.ts`, upload/delete UI in `app/(app)/quotes/[id]/edit/PhotoManager.tsx`. Public quote view already rendered the grid.
 - ⬜ "3-minute" time-to-quote — no instrumentation/telemetry to confirm, and wizard still requires manual per-item entry after template load (no bulk quantity/price shortcuts)
 
@@ -37,6 +42,8 @@ Legend: ✅ done · 🚧 partial / in-progress · ⬜ not started
   - Email pixel tracking — `app/api/track/open/route.ts`, embedded in `lib/email.ts` templates
 - ✅ E-sign — canvas signature capture via `signature_pad`, stored as data URL — `app/q/[token]/sign/SignatureCapture.tsx`, `Quote.signatureDataUrl`
 - ✅ Accept flow — per-tier "Accept This Option" → sign page → `acceptQuote()` action sets status `ACCEPTED`, records signer name/timestamp, cancels pending follow-ups — `app/actions/quotes.ts`
+- ✅ Accepted option is visible after the fact — `Quote.acceptedTierId` was always persisted but never read. `app/q/[token]/page.tsx` now says "You accepted the **Better** option — $X" in the ACCEPTED banner, rings/badges that tier's card and dims the rest; `app/(app)/quotes/[id]/page.tsx` shows the same option + tax-inclusive amount to the owner
+- ✅ Tax — `User.taxRatePercent` (Settings default) is snapshotted onto `Quote.taxRatePercent` at creation and overridable per quote in `QuoteDetailsEditor`, so changing the business rate never rewrites already-sent quotes. `lib/money.ts` holds `formatMoney()` (always 2dp — every page previously did `(cents/100).toLocaleString()`, which rendered 123450 as "$1,234.5") and `quoteTotals()`. Subtotal / Tax (X%) / Total render on the edit, detail, public and sign pages when the rate is above 0; a single total when it's 0. Both `taxRatePercent` columns are Prisma `Decimal`, so every page converts with `Number()` before crossing the Server→Client boundary
 - ✅ Decline flow — `app/q/[token]/decline/route.ts` POST handler calls `declineQuote(token)`, 303-redirects back to `/q/[token]`
 - ⬜ Quote expiration enforcement — `Quote.validUntil` and `QuoteStatus.EXPIRED` exist in the schema, but nothing sets `EXPIRED` automatically (no cron/cutoff check); `EXPIRED` UI states exist purely for a status that's never reached
 - ✅ Copy-link button — `CopyLinkButton.tsx` client component, clipboard API + "Copied!" state
@@ -57,7 +64,7 @@ Legend: ✅ done · 🚧 partial / in-progress · ⬜ not started
 
 ## 5. Settings & Templates
 
-- ✅ Business profile form — business name, phone, trade type, logo URL — `app/(app)/settings/SettingsForm.tsx`, `app/actions/settings.ts`
+- ✅ Business profile form — business name, phone, trade type, logo URL, default tax rate — `app/(app)/settings/SettingsForm.tsx`, `app/actions/settings.ts`
 - 🚧 Logo — stored/rendered as a plain URL string (`z.string().url()`), no file upload widget or image hosting integration; user must host their own logo somewhere else and paste a link
 - ✅ Template listing (system defaults + user's own) with full-contents preview — `app/(app)/templates/page.tsx`, native `<details>`/`<summary>` disclosure per card, items grouped under Good/Better/Best headers, no truncation
 - ✅ Seeded system templates per trade — `prisma/seed.ts`, 2 templates each for Painting, Pressure Washing, Cleaning, Fumigation, HVAC, Landscaping, Moving Services (14 total)
@@ -68,7 +75,7 @@ Legend: ✅ done · 🚧 partial / in-progress · ⬜ not started
 
 ## 6. Dashboard & Quote List / Status Tracking
 
-- ✅ Quote list with status badges, sorted newest-first, capped at 50 — `app/(app)/dashboard/page.tsx`
+- ✅ Quote list with status badges, sorted newest-first, capped at 50 — `app/(app)/dashboard/page.tsx`. The "Up to $X" figure is the highest tier **including tax**, via `quoteTotals()`
 - ✅ Status enum covers full lifecycle: `DRAFT → SENT → VIEWED → ACCEPTED/DECLINED/EXPIRED` — `prisma/schema.prisma`
 - ✅ Empty state / first-quote CTA — `app/(app)/dashboard/page.tsx`
 - ✅ Per-quote detail page with tier breakdown, share link display, accepted-signature summary — `app/(app)/quotes/[id]/page.tsx`
@@ -97,3 +104,15 @@ From `CLAUDE.md` — confirmed absent from the codebase, not planned for this ph
 - Logo upload widget (vs. pasted URL)
 - Analytics/reporting dashboard
 - Client-side "ask a question" / reply-in-thread on the quote view
+- Per-quote discount (flat or %) applied before tax — deliberately deferred when tax shipped
+- Terms & conditions: default text in Settings with a per-quote override, rendered above the signature on the client view — deferred alongside discount
+- Currency is a hardcoded `$` in `lib/money.ts`; no per-business currency setting
+
+---
+
+## Dev environment note
+
+Turbopack's dev route registry has twice dropped `/quotes/[id]/edit` after edits to
+that route's files — the page 404s while `next build` compiles it fine, and
+`.next/dev/server/app-paths-manifest.json` simply has no entry for it. The fix is
+to clear the dev cache: `npm run dev:clean` (wipes `.next`, then `next dev`).

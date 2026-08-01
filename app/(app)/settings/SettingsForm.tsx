@@ -8,6 +8,7 @@ type User = {
   phone: string | null;
   logoUrl: string | null;
   tradeType: string;
+  taxRatePercent: number;
 };
 
 const TRADE_TYPES = [
@@ -33,6 +34,7 @@ export function SettingsForm({ user }: { user: User }) {
     (form.elements.namedItem("businessName") as HTMLInputElement).value = "Lorem Ipsum Painting Co.";
     (form.elements.namedItem("phone") as HTMLInputElement).value = "+1 555 123 4567";
     (form.elements.namedItem("logoUrl") as HTMLInputElement).value = "";
+    (form.elements.namedItem("taxRatePercent") as HTMLInputElement).value = "16";
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -121,6 +123,28 @@ export function SettingsForm({ user }: { user: User }) {
           placeholder="https://..."
           className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1.5" htmlFor="taxRatePercent">
+          Tax Rate (%)
+        </label>
+        <input
+          id="taxRatePercent"
+          name="taxRatePercent"
+          type="number"
+          min="0"
+          max="100"
+          step="any"
+          inputMode="decimal"
+          onFocus={(e) => e.currentTarget.select()}
+          defaultValue={String(user.taxRatePercent)}
+          className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+        />
+        <p className="mt-1.5 text-xs text-zinc-500">
+          Applied to new quotes. Set 0 for no tax — you can still override the rate
+          on an individual quote.
+        </p>
       </div>
 
       {error && <p className="text-sm text-red-600 font-medium">{error}</p>}

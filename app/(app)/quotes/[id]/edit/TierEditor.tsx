@@ -6,8 +6,11 @@ import {
   updateLineItem,
   deleteLineItem,
   updateTierDescription,
+  addTier,
+  deleteTier,
 } from "@/app/actions/quotes";
 import { applyTemplate, createCustomTemplate } from "@/app/actions/templates";
+import { formatMoney, quoteTotals } from "@/lib/money";
 
 type Template = { id: string; name: string; tradeType: string };
 
@@ -51,72 +54,139 @@ const TIER_LABELS: Record<string, string> = {
   BEST: "Best",
 };
 
+const ALL_TIER_LABELS = ["GOOD", "BETTER", "BEST"];
+
+/** Tapping a number field should replace it, not drop a caret mid-value. */
+const selectOnFocus = (e: React.FocusEvent<HTMLInputElement>) =>
+  e.currentTarget.select();
+
 export function TierEditor({
   tiers,
   quoteId,
   templates,
+  taxRatePercent,
 }: {
   tiers: Tier[];
   quoteId: string;
   templates: Template[];
+  taxRatePercent: number;
 }) {
   const [activeTab, setActiveTab] = useState(tiers[0]?.label ?? "GOOD");
 
-  const activeTier = tiers.find((t) => t.label === activeTab);
+  // Fall back to the first tier when the active one has just been removed
+  const activeTier = tiers.find((t) => t.label === activeTab) ?? tiers[0];
 
   return (
     <div>
       <TemplateToolbar quoteId={quoteId} templates={templates} />
 
       {/* Tab selector */}
-      <div className="flex rounded-xl border border-zinc-200 overflow-hidden mb-6">
+      <div className="flex rounded-xl border border-zinc-200 overflow-hidden mb-4">
         {tiers.map((tier) => (
           <button
             key={tier.id}
             type="button"
             onClick={() => setActiveTab(tier.label)}
             className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-              activeTab === tier.label
+              activeTier?.id === tier.id
                 ? "bg-zinc-900 text-white"
                 : "bg-white text-zinc-600 hover:bg-zinc-50"
             }`}
           >
             {TIER_LABELS[tier.label]}
             <span className="block text-xs font-normal mt-0.5 opacity-75">
-              ${(tier.totalCents / 100).toLocaleString()}
+              {formatMoney(
+                quoteTotals(tier.totalCents, taxRatePercent).totalCents
+              )}
             </span>
           </button>
         ))}
       </div>
 
-      {activeTier && <TierLineItems tier={activeTier} quoteId={quoteId} />}
+      <AddTierControl quoteId={quoteId} tiers={tiers} />
+
+      {activeTier && (
+        <TierLineItems
+          tier={activeTier}
+          taxRatePercent={taxRatePercent}
+          canRemove={tiers.length > 1}
+        />
+      )}
     </div>
   );
 }
 
-function TierLineItems({ tier, quoteId }: { tier: Tier; quoteId: string }) {
+function AddTierControl({ quoteId, tiers }: { quoteId: string; tiers: Tier[] }) {
+  const [isPending, startTransition] = useTransition();
+  const present = new Set(tiers.map((t) => t.label));
+  const missing = ALL_TIER_LABELS.filter((label) => !present.has(label));
+
+  if (missing.length === 0) return null;
+
+  return (
+    <div className="flex gap-2 mb-4">
+      {missing.map((label) => (
+        <button
+          key={label}
+          type="button"
+          disabled={isPending}
+          onClick={() =>
+            startTransition(async () => {
+              const result = await addTier(quoteId, label);
+              if (result?.error) alert(result.error);
+            })
+          }
+          className="flex-1 h-9 rounded-xl border border-dashed border-zinc-300 text-xs text-zinc-500 hover:border-zinc-500 hover:text-zinc-700 transition-colors disabled:opacity-50"
+        >
+          + Add {TIER_LABELS[label]} option
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TierLineItems({
+  tier,
+  taxRatePercent,
+  canRemove,
+}: {
+  tier: Tier;
+  taxRatePercent: number;
+  canRemove: boolean;
+}) {
   const [isPending, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
+  const totals = quoteTotals(tier.totalCents, taxRatePercent);
+
+  function handleRemoveTier() {
+    if (
+      !window.confirm(
+        `Remove the ${TIER_LABELS[tier.label]} option and all of its line items?`
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await deleteTier(tier.id);
+      if (result?.error) alert(result.error);
+    });
+  }
 
   return (
     <div className={`rounded-2xl border-2 ${TIER_COLORS[tier.label]} p-4 space-y-3`}>
       <div className="flex items-center justify-between">
         <span className="font-semibold">{TIER_LABELS[tier.label]}</span>
-        <span className="text-lg font-bold">${(tier.totalCents / 100).toLocaleString()}</span>
+        <span className="text-lg font-bold">{formatMoney(totals.totalCents)}</span>
       </div>
 
       <TierDescriptionEditor tier={tier} />
 
       {tier.lineItems.map((item) => (
-        <LineItemRow key={item.id} item={item} quoteId={quoteId} />
+        <LineItemRow key={item.id} item={item} />
       ))}
 
       {adding ? (
-        <AddLineItemForm
-          tierId={tier.id}
-          quoteId={quoteId}
-          onDone={() => setAdding(false)}
-        />
+        <AddLineItemForm tierId={tier.id} onDone={() => setAdding(false)} />
       ) : (
         <button
           type="button"
@@ -126,28 +196,44 @@ function TierLineItems({ tier, quoteId }: { tier: Tier; quoteId: string }) {
           + Add Line Item
         </button>
       )}
+
+      {taxRatePercent > 0 && (
+        <div className="pt-3 border-t border-zinc-100 space-y-1 text-sm">
+          <div className="flex justify-between text-zinc-600">
+            <span>Subtotal</span>
+            <span>{formatMoney(totals.subtotalCents)}</span>
+          </div>
+          <div className="flex justify-between text-zinc-600">
+            <span>Tax ({Number(taxRatePercent)}%)</span>
+            <span>{formatMoney(totals.taxCents)}</span>
+          </div>
+          <div className="flex justify-between font-semibold text-zinc-900">
+            <span>Total</span>
+            <span>{formatMoney(totals.totalCents)}</span>
+          </div>
+        </div>
+      )}
+
+      {canRemove && (
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={handleRemoveTier}
+          className="w-full h-9 rounded-xl border border-red-200 text-xs font-medium text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+        >
+          {isPending ? "Removing..." : `Remove ${TIER_LABELS[tier.label]} option`}
+        </button>
+      )}
     </div>
   );
 }
 
-function LineItemRow({
-  item,
-  quoteId,
-}: {
-  item: LineItem;
-  quoteId: string;
-}) {
+function LineItemRow({ item }: { item: LineItem }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   if (editing) {
-    return (
-      <EditLineItemForm
-        item={item}
-        quoteId={quoteId}
-        onDone={() => setEditing(false)}
-      />
-    );
+    return <EditLineItemForm item={item} onDone={() => setEditing(false)} />;
   }
 
   return (
@@ -155,13 +241,11 @@ function LineItemRow({
       <div className="min-w-0">
         <p className="text-sm font-medium truncate">{item.description}</p>
         <p className="text-xs text-zinc-500">
-          {Number(item.quantity)} × ${(item.unitCents / 100).toLocaleString()}
+          {Number(item.quantity)} × {formatMoney(item.unitCents)}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-sm font-semibold">
-          ${(item.totalCents / 100).toLocaleString()}
-        </span>
+        <span className="text-sm font-semibold">{formatMoney(item.totalCents)}</span>
         <button
           type="button"
           onClick={() => setEditing(true)}
@@ -186,11 +270,9 @@ function LineItemRow({
 
 function AddLineItemForm({
   tierId,
-  quoteId,
   onDone,
 }: {
   tierId: string;
-  quoteId: string;
   onDone: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -210,6 +292,7 @@ function AddLineItemForm({
         name="description"
         type="text"
         required
+        maxLength={200}
         placeholder="Description"
         className="w-full h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
       />
@@ -219,7 +302,9 @@ function AddLineItemForm({
           type="number"
           required
           min="0.01"
-          step="0.01"
+          step="any"
+          inputMode="decimal"
+          onFocus={selectOnFocus}
           defaultValue="1"
           placeholder="Qty"
           className="w-20 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
@@ -229,7 +314,9 @@ function AddLineItemForm({
           type="number"
           required
           min="0"
-          step="0.01"
+          step="any"
+          inputMode="decimal"
+          onFocus={selectOnFocus}
           placeholder="Price ($)"
           className="flex-1 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
         />
@@ -256,11 +343,9 @@ function AddLineItemForm({
 
 function EditLineItemForm({
   item,
-  quoteId,
   onDone,
 }: {
   item: LineItem;
-  quoteId: string;
   onDone: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -284,6 +369,7 @@ function EditLineItemForm({
         name="description"
         type="text"
         required
+        maxLength={200}
         defaultValue={item.description}
         className="w-full h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
       />
@@ -293,8 +379,10 @@ function EditLineItemForm({
           type="number"
           required
           min="0.01"
-          step="0.01"
-          defaultValue={String(item.quantity)}
+          step="any"
+          inputMode="decimal"
+          onFocus={selectOnFocus}
+          defaultValue={String(Number(item.quantity))}
           className="w-20 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
         />
         <input
@@ -302,8 +390,10 @@ function EditLineItemForm({
           type="number"
           required
           min="0"
-          step="0.01"
-          defaultValue={(item.unitCents / 100).toFixed(2)}
+          step="any"
+          inputMode="decimal"
+          onFocus={selectOnFocus}
+          defaultValue={String(item.unitCents / 100)}
           className="flex-1 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
         />
       </div>

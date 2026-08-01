@@ -58,6 +58,8 @@ model User {
   phone        String?
   logoUrl      String?
   tradeType    TradeType @default(OTHER)
+  // Default tax rate as a percentage (e.g. 16.00). Snapshotted onto each new quote.
+  taxRatePercent Decimal @default(0) @db.Decimal(5, 2)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -78,6 +80,8 @@ model Quote {
   title          String
   notes          String?
   validUntil     DateTime?
+  // Snapshot of the business tax rate at creation time, overridable per quote
+  taxRatePercent Decimal   @default(0) @db.Decimal(5, 2)
   shareToken     String      @unique @default(cuid())
   status         QuoteStatus @default(DRAFT)
   viewedAt       DateTime?

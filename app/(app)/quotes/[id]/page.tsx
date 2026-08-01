@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { formatMoney, quoteTotals } from "@/lib/money";
 import { SendQuoteButton } from "./SendQuoteButton";
 import { CopyLinkButton } from "./CopyLinkButton";
 
@@ -37,6 +38,8 @@ export default async function QuoteDetailPage({
 
   const badge = STATUS_LABELS[quote.status] ?? STATUS_LABELS.DRAFT;
   const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL}/q/${quote.shareToken}`;
+  const taxRatePercent = Number(quote.taxRatePercent);
+  const acceptedTier = quote.tiers.find((t) => t.id === quote.acceptedTierId);
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
@@ -74,38 +77,83 @@ export default async function QuoteDetailPage({
 
       {/* Tiers */}
       <div className="space-y-4">
-        {quote.tiers.map((tier) => (
-          <div key={tier.id} className="rounded-2xl border border-zinc-200 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="font-semibold text-sm">
-                {tier.label.charAt(0) + tier.label.slice(1).toLowerCase()}
-              </span>
-              <span className="font-bold text-lg">
-                ${(tier.totalCents / 100).toLocaleString()}
-              </span>
+        {quote.tiers.map((tier) => {
+          const totals = quoteTotals(tier.totalCents, taxRatePercent);
+          const isAccepted = tier.id === quote.acceptedTierId;
+          return (
+            <div
+              key={tier.id}
+              className={`rounded-2xl border p-4 ${
+                isAccepted ? "border-green-300 ring-2 ring-green-200" : "border-zinc-200"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-semibold text-sm flex items-center gap-2">
+                  {tier.label.charAt(0) + tier.label.slice(1).toLowerCase()}
+                  {isAccepted && (
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                      Accepted
+                    </span>
+                  )}
+                </span>
+                <span className="font-bold text-lg">{formatMoney(totals.totalCents)}</span>
+              </div>
+              {tier.lineItems.length > 0 && (
+                <ul className="space-y-1">
+                  {tier.lineItems.map((item) => (
+                    <li key={item.id} className="flex justify-between text-sm text-zinc-600">
+                      <span>{item.description}</span>
+                      <span>{formatMoney(item.totalCents)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {taxRatePercent > 0 && (
+                <div className="mt-3 pt-3 border-t border-zinc-100 space-y-1 text-sm">
+                  <div className="flex justify-between text-zinc-500">
+                    <span>Subtotal</span>
+                    <span>{formatMoney(totals.subtotalCents)}</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-500">
+                    <span>Tax ({taxRatePercent}%)</span>
+                    <span>{formatMoney(totals.taxCents)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-zinc-900">
+                    <span>Total</span>
+                    <span>{formatMoney(totals.totalCents)}</span>
+                  </div>
+                </div>
+              )}
             </div>
-            {tier.lineItems.length > 0 && (
-              <ul className="space-y-1">
-                {tier.lineItems.map((item) => (
-                  <li key={item.id} className="flex justify-between text-sm text-zinc-600">
-                    <span>{item.description}</span>
-                    <span>${(item.totalCents / 100).toLocaleString()}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Accepted info */}
-      {quote.status === "ACCEPTED" && quote.signedByName && (
+      {quote.status === "ACCEPTED" && (
         <div className="rounded-2xl bg-green-50 border border-green-200 p-4 text-sm">
           <p className="font-semibold text-green-800">Quote Accepted</p>
-          <p className="text-green-700 mt-0.5">
-            Signed by <span className="font-medium">{quote.signedByName}</span>{" "}
-            on {quote.signedAt ? new Date(quote.signedAt).toLocaleDateString() : "—"}
-          </p>
+          {acceptedTier && (
+            <p className="text-green-700 mt-0.5">
+              Option:{" "}
+              <span className="font-medium">
+                {acceptedTier.label.charAt(0) +
+                  acceptedTier.label.slice(1).toLowerCase()}
+              </span>{" "}
+              —{" "}
+              <span className="font-medium">
+                {formatMoney(
+                  quoteTotals(acceptedTier.totalCents, taxRatePercent).totalCents
+                )}
+              </span>
+            </p>
+          )}
+          {quote.signedByName && (
+            <p className="text-green-700 mt-0.5">
+              Signed by <span className="font-medium">{quote.signedByName}</span>{" "}
+              on {quote.signedAt ? new Date(quote.signedAt).toLocaleDateString() : "—"}
+            </p>
+          )}
         </div>
       )}
     </div>

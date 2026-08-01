@@ -8,15 +8,68 @@ import { db } from "@/lib/db";
 import { requireAuth, requireDbUser } from "@/lib/auth";
 import { scheduleFollowUps, cancelPendingFollowUps } from "@/lib/follow-ups";
 
+// ─── Shared quote field validation ────────────────────────────────────────────
+
+const FIELD_LABELS: Record<string, string> = {
+  title: "Quote title",
+  clientName: "Client name",
+  clientEmail: "Client email",
+  clientPhone: "Client phone",
+  jobAddress: "Job address",
+  notes: "Notes",
+  validUntil: "Valid until",
+};
+
+/** Turns a zod failure into something the user can act on, not "Invalid form data". */
+function describeIssues(error: z.ZodError): string {
+  const seen = new Set<string>();
+  const parts: string[] = [];
+
+  for (const issue of error.issues) {
+    const key = String(issue.path[0] ?? "");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    parts.push(`${FIELD_LABELS[key] ?? key}: ${issue.message}`);
+  }
+
+  return parts.join(" · ") || "Invalid form data";
+}
+
+const quoteFields = {
+  clientName: z
+    .string()
+    .min(1, "required")
+    .max(100, "must be 100 characters or fewer"),
+  clientEmail: z
+    .string()
+    .email("must be a valid email address")
+    .optional()
+    .or(z.literal("")),
+  clientPhone: z
+    .string()
+    .max(30, "must be 30 characters or fewer")
+    .optional()
+    .or(z.literal("")),
+  jobAddress: z
+    .string()
+    .max(200, "must be 200 characters or fewer")
+    .optional()
+    .or(z.literal("")),
+  title: z
+    .string()
+    .min(1, "required")
+    .max(200, "must be 200 characters or fewer"),
+  notes: z
+    .string()
+    .max(1000, "must be 1000 characters or fewer")
+    .optional()
+    .or(z.literal("")),
+};
+
 // ─── Create quote ─────────────────────────────────────────────────────────────
 
 const createQuoteSchema = z.object({
-  clientName: z.string().min(1).max(100),
-  clientEmail: z.string().email().optional().or(z.literal("")),
-  clientPhone: z.string().max(20).optional().or(z.literal("")),
-  jobAddress: z.string().max(200).optional().or(z.literal("")),
-  title: z.string().min(1).max(200),
-  notes: z.string().max(1000).optional().or(z.literal("")),
+  ...quoteFields,
   templateId: z.string().optional(),
 });
 
@@ -33,7 +86,7 @@ export async function createQuote(formData: FormData) {
     templateId: formData.get("templateId") || undefined,
   });
 
-  if (!parsed.success) return { error: "Invalid form data" };
+  if (!parsed.success) return { error: describeIssues(parsed.error) };
 
   const { templateId, ...quoteData } = parsed.data;
 
@@ -41,6 +94,8 @@ export async function createQuote(formData: FormData) {
     data: {
       ...quoteData,
       userId: user.id,
+      // Snapshot the business rate so later Settings changes don't rewrite sent quotes
+      taxRatePercent: user.taxRatePercent,
       tiers: {
         create: [
           { label: "GOOD", totalCents: 0 },
@@ -89,22 +144,45 @@ export async function createQuote(formData: FormData) {
 
 // ─── Update quote ─────────────────────────────────────────────────────────────
 
+const updateQuoteSchema = z.object({
+  ...quoteFields,
+  // <input type="date"> gives YYYY-MM-DD, or "" when cleared
+  validUntil: z.string().optional().or(z.literal("")),
+  taxRatePercent: z.coerce
+    .number("must be a number")
+    .min(0, "cannot be negative")
+    .max(100, "cannot exceed 100"),
+});
+
 export async function updateQuote(
   quoteId: string,
-  data: {
-    clientName?: string;
-    clientEmail?: string;
-    clientPhone?: string;
-    jobAddress?: string;
-    title?: string;
-    notes?: string;
-    validUntil?: Date;
-  }
+  data: z.input<typeof updateQuoteSchema>
 ) {
   const authUser = await requireAuth();
   await assertQuoteOwner(quoteId, authUser.id);
-  await db.quote.update({ where: { id: quoteId }, data });
+
+  const parsed = updateQuoteSchema.safeParse(data);
+  if (!parsed.success) return { error: describeIssues(parsed.error) };
+
+  const { validUntil, ...rest } = parsed.data;
+
+  await db.quote.update({
+    where: { id: quoteId },
+    data: {
+      ...rest,
+      clientEmail: rest.clientEmail || null,
+      clientPhone: rest.clientPhone || null,
+      jobAddress: rest.jobAddress || null,
+      notes: rest.notes || null,
+      // Date-only field — store UTC midnight so it round-trips back into
+      // <input type="date"> via toISOString().slice(0, 10) without shifting a day
+      validUntil: validUntil ? new Date(`${validUntil}T00:00:00Z`) : null,
+    },
+  });
+
   revalidatePath(`/quotes/${quoteId}`);
+  revalidatePath(`/quotes/${quoteId}/edit`);
+  return { success: true };
 }
 
 // ─── Send quote ───────────────────────────────────────────────────────────────
@@ -142,6 +220,55 @@ export async function sendQuote(quoteId: string) {
 
   revalidatePath(`/quotes/${quoteId}`);
   revalidatePath("/dashboard");
+  return { success: true };
+}
+
+// ─── Tiers (quote options) ────────────────────────────────────────────────────
+
+const tierLabelSchema = z.enum(["GOOD", "BETTER", "BEST"]);
+
+/** Removes one option from a quote. Line items cascade via the schema relation. */
+export async function deleteTier(tierId: string) {
+  const authUser = await requireAuth();
+
+  const tier = await db.quoteTier.findUnique({
+    where: { id: tierId },
+    include: { quote: { select: { id: true, userId: true } } },
+  });
+  if (!tier) return { error: "Option not found" };
+
+  await assertUserOwnsQuote(tier.quote.userId, authUser.id);
+
+  const remaining = await db.quoteTier.count({
+    where: { quoteId: tier.quote.id },
+  });
+  if (remaining <= 1) return { error: "A quote needs at least one option" };
+
+  await db.quoteTier.delete({ where: { id: tierId } });
+
+  revalidatePath(`/quotes/${tier.quote.id}/edit`);
+  revalidatePath(`/quotes/${tier.quote.id}`);
+  return { success: true };
+}
+
+export async function addTier(quoteId: string, label: string) {
+  const authUser = await requireAuth();
+  await assertQuoteOwner(quoteId, authUser.id);
+
+  const parsedLabel = tierLabelSchema.safeParse(label);
+  if (!parsedLabel.success) return { error: "Unknown option" };
+
+  const existing = await db.quoteTier.findUnique({
+    where: { quoteId_label: { quoteId, label: parsedLabel.data } },
+  });
+  if (existing) return { error: "That option already exists on this quote" };
+
+  await db.quoteTier.create({
+    data: { quoteId, label: parsedLabel.data, totalCents: 0 },
+  });
+
+  revalidatePath(`/quotes/${quoteId}/edit`);
+  revalidatePath(`/quotes/${quoteId}`);
   return { success: true };
 }
 

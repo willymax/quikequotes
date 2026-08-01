@@ -19,6 +19,7 @@ const profileSchema = z.object({
     "OTHER",
   ]),
   logoUrl: z.string().url().optional().or(z.literal("")),
+  taxRatePercent: z.coerce.number().min(0).max(100),
 });
 
 export async function updateBusinessProfile(formData: FormData) {
@@ -29,6 +30,7 @@ export async function updateBusinessProfile(formData: FormData) {
     phone: formData.get("phone") || undefined,
     tradeType: formData.get("tradeType"),
     logoUrl: formData.get("logoUrl") || undefined,
+    taxRatePercent: formData.get("taxRatePercent") || 0,
   });
 
   if (!parsed.success) {
