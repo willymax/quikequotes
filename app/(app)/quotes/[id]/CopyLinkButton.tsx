@@ -31,8 +31,8 @@ export function CopyLinkButton({ publicUrl }: { publicUrl: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className={`mt-2 block text-xs font-medium underline underline-offset-2 ${
-        state === "failed" ? "text-red-600" : "text-zinc-900"
+      className={`mt-2.5 block text-xs font-semibold underline underline-offset-4 ${
+        state === "failed" ? "text-danger" : "text-ink"
       }`}
     >
       {state === "copied"

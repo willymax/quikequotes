@@ -1,18 +1,17 @@
+import { CheckIcon } from "../icons";
 import { CtaButton } from "./CtaButton";
+import { SectionHeading } from "./SectionHeading";
 import { PLANS } from "./plans";
 
 export function Pricing({ signedIn }: { signedIn: boolean }) {
   return (
     <section className="px-6 py-20 bg-paper">
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-3xl sm:text-4xl font-extrabold tracking-[-0.02em] text-center mb-3 text-ink">
-          Simple pricing, no surprises
-        </h2>
-        <p className="text-center text-ink-muted mb-12 max-w-lg mx-auto">
+        <SectionHeading eyebrow="Pricing" title="Simple pricing, no surprises">
           Launch pricing. Free to start right now — no credit card required —
-          and if you join during early access, your price is locked in for
-          as long as you&apos;re a member.
-        </p>
+          and if you join during early access, your price is locked in for as
+          long as you&apos;re a member.
+        </SectionHeading>
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {PLANS.map((plan) => (
@@ -21,7 +20,7 @@ export function Pricing({ signedIn }: { signedIn: boolean }) {
               className={`rounded-2xl p-6 flex flex-col relative transition-all hover:-translate-y-1 ${
                 plan.highlight
                   ? "border-2 border-ink bg-paper shadow-xl"
-                  : "border border-ink/10 bg-paper-warm hover:shadow-lg"
+                  : "border border-line bg-paper-warm hover:shadow-lg"
               }`}
             >
               {plan.highlight && (
@@ -32,36 +31,40 @@ export function Pricing({ signedIn }: { signedIn: boolean }) {
               <p className="font-bold text-lg text-ink">{plan.name}</p>
               <p className="text-xs text-ink-muted mb-4">{plan.tagline}</p>
               <p className="mb-5">
-                <span className="text-3xl font-extrabold font-mono text-ink">
+                <span className="type-num text-3xl font-extrabold text-ink">
                   {plan.price}
                 </span>
                 <span className="text-ink-muted text-sm"> / month</span>
               </p>
               <ul className="space-y-2 mb-6 flex-1">
                 {plan.features.map((f) => (
-                  <li key={f} className="text-sm text-ink-muted flex gap-2">
-                    <span className="text-green-600 font-bold shrink-0">
-                      ✓
-                    </span>
+                  <li
+                    key={f}
+                    className="text-sm text-ink-muted flex gap-2 items-start"
+                  >
+                    <CheckIcon
+                      size={15}
+                      className="shrink-0 mt-0.5 text-accepted-rail"
+                    />
                     {f}
                   </li>
                 ))}
               </ul>
               <CtaButton
                 href={signedIn ? "/dashboard" : "/sign-up"}
-                size="md"
-                variant={plan.highlight ? "primary" : "outline-ink"}
+                size="lg"
+                variant={plan.highlight ? "accent" : "outline"}
                 className="w-full"
               >
-                {signedIn ? "Go to Dashboard" : "Start free"}
+                {signedIn ? "Go to dashboard" : "Start free"}
               </CtaButton>
             </div>
           ))}
         </div>
 
         <p className="text-center text-sm text-ink-muted mt-8">
-          30-day money-back guarantee once billing launches. No minimum term
-          — cancel any time.
+          30-day money-back guarantee once billing launches. No minimum term —
+          cancel any time.
         </p>
       </div>
     </section>

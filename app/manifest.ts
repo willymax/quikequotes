@@ -8,6 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Send a professional quote from your phone in 3 minutes, with tiers, tracking, and follow-up that runs itself.",
     start_url: "/",
     display: "standalone",
+    // --color-paper / --color-ink. Read by the OS, not the browser, so these
+    // can't be variables; app/globals.css is the source of truth.
     background_color: "#ffffff",
     theme_color: "#14171c",
     // PLACEHOLDER: add real 192x192 / 512x512 PNG icons before relying on

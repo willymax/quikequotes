@@ -4,6 +4,8 @@ import { useRef, useTransition } from "react";
 import Image from "next/image";
 import { useUploadThing } from "@/lib/uploadthing";
 import { addPhoto, deletePhoto } from "@/app/actions/photos";
+import { buttonClass } from "@/lib/ui";
+import { TrashIcon } from "@/app/components/icons";
 
 type Photo = { id: string; url: string; caption: string | null };
 
@@ -36,10 +38,10 @@ export function PhotoManager({ quoteId, photos }: { quoteId: string; photos: Pho
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200 p-4 space-y-3">
+    <div className="rounded-2xl border border-line bg-surface p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="font-semibold text-sm">Photos</span>
-        <span className="text-xs text-zinc-500">
+        <span className="type-num text-xs text-ink-muted">
           {photos.length}/{MAX_PHOTOS}
         </span>
       </div>
@@ -49,7 +51,7 @@ export function PhotoManager({ quoteId, photos }: { quoteId: string; photos: Pho
           {photos.map((photo) => (
             <div
               key={photo.id}
-              className="relative rounded-xl overflow-hidden aspect-square bg-zinc-100"
+              className="relative rounded-xl overflow-hidden aspect-square bg-surface-sunk border border-line"
             >
               <Image
                 src={photo.url}
@@ -66,9 +68,10 @@ export function PhotoManager({ quoteId, photos }: { quoteId: string; photos: Pho
                     await deletePhoto(photo.id);
                   })
                 }
-                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center disabled:opacity-50"
+                aria-label="Remove photo"
+                className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-ink/70 text-paper flex items-center justify-center hover:bg-ink disabled:opacity-50"
               >
-                ×
+                <TrashIcon size={14} />
               </button>
             </div>
           ))}
@@ -79,9 +82,9 @@ export function PhotoManager({ quoteId, photos }: { quoteId: string; photos: Pho
         type="button"
         disabled={isUploading || photos.length >= MAX_PHOTOS}
         onClick={() => fileInputRef.current?.click()}
-        className="w-full h-10 rounded-xl border border-dashed border-zinc-300 text-sm text-zinc-500 hover:border-zinc-500 hover:text-zinc-700 transition-colors disabled:opacity-50"
+        className={buttonClass({ variant: "dashed", block: true })}
       >
-        {isUploading ? "Uploading..." : "+ Add Photo"}
+        {isUploading ? "Uploading…" : "+ Add photo"}
       </button>
       <input
         ref={fileInputRef}

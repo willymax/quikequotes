@@ -10,7 +10,10 @@ import {
   deleteTier,
 } from "@/app/actions/quotes";
 import { applyTemplate, createCustomTemplate } from "@/app/actions/templates";
-import { formatMoney, quoteTotals } from "@/lib/money";
+import { quoteTotals } from "@/lib/money";
+import { tierLabel } from "@/lib/status";
+import { buttonClass, inputClass } from "@/lib/ui";
+import { Money } from "@/app/components/ui/Money";
 import { matchesTrade, tradeLabel } from "@/lib/trades";
 import { TradeFilterChips } from "@/app/components/TradeFilterChips";
 
@@ -36,18 +39,6 @@ type Tier = {
   description: string | null;
   totalCents: number;
   lineItems: LineItem[];
-};
-
-const TIER_COLORS: Record<string, string> = {
-  GOOD: "border-zinc-200",
-  BETTER: "border-blue-200",
-  BEST: "border-amber-200",
-};
-
-const TIER_LABELS: Record<string, string> = {
-  GOOD: "Good",
-  BETTER: "Better",
-  BEST: "Best",
 };
 
 const ALL_TIER_LABELS = ["GOOD", "BETTER", "BEST"];
@@ -85,27 +76,34 @@ export function TierEditor({
       />
 
       {/* Tab selector */}
-      <div className="flex rounded-xl border border-zinc-200 overflow-hidden mb-4">
-        {tiers.map((tier) => (
-          <button
-            key={tier.id}
-            type="button"
-            onClick={() => setActiveTab(tier.label)}
-            className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-              activeTier?.id === tier.id
-                ? "bg-zinc-900 text-white"
-                : "bg-white text-zinc-600 hover:bg-zinc-50"
-            }`}
-          >
-            {TIER_LABELS[tier.label]}
-            <span className="block text-xs font-normal mt-0.5 opacity-75">
-              {formatMoney(
-                quoteTotals(tier.totalCents, taxRatePercent).totalCents,
-                currency
-              )}
-            </span>
-          </button>
-        ))}
+      <div className="flex rounded-xl border border-line overflow-hidden mb-4">
+        {tiers.map((tier) => {
+          const active = activeTier?.id === tier.id;
+          return (
+            <button
+              key={tier.id}
+              type="button"
+              onClick={() => setActiveTab(tier.label)}
+              className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+                active
+                  ? "bg-ink text-paper"
+                  : "bg-surface text-ink-muted hover:bg-surface-sunk"
+              }`}
+            >
+              {tierLabel(tier.label)}
+              <span className="block mt-1">
+                <Money
+                  cents={
+                    quoteTotals(tier.totalCents, taxRatePercent).totalCents
+                  }
+                  currency={currency}
+                  size="xs"
+                  tone={active ? "invert" : "muted"}
+                />
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <AddTierControl quoteId={quoteId} tiers={tiers} />
@@ -142,9 +140,9 @@ function AddTierControl({ quoteId, tiers }: { quoteId: string; tiers: Tier[] }) 
               if (result?.error) alert(result.error);
             })
           }
-          className="flex-1 h-9 rounded-xl border border-dashed border-zinc-300 text-xs text-zinc-500 hover:border-zinc-500 hover:text-zinc-700 transition-colors disabled:opacity-50"
+          className={buttonClass({ variant: "dashed", size: "sm", className: "flex-1" })}
         >
-          + Add {TIER_LABELS[label]} option
+          + Add {tierLabel(label)} option
         </button>
       ))}
     </div>
@@ -169,7 +167,7 @@ function TierLineItems({
   function handleRemoveTier() {
     if (
       !window.confirm(
-        `Remove the ${TIER_LABELS[tier.label]} option and all of its line items?`
+        `Remove the ${tierLabel(tier.label)} option and all of its line items?`
       )
     ) {
       return;
@@ -181,12 +179,10 @@ function TierLineItems({
   }
 
   return (
-    <div className={`rounded-2xl border-2 ${TIER_COLORS[tier.label]} p-4 space-y-3`}>
+    <div className="rounded-2xl border border-line bg-surface p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="font-semibold">{TIER_LABELS[tier.label]}</span>
-        <span className="text-lg font-bold">
-          {formatMoney(totals.totalCents, currency)}
-        </span>
+        <span className="font-semibold">{tierLabel(tier.label)}</span>
+        <Money cents={totals.totalCents} currency={currency} size="md" />
       </div>
 
       <TierDescriptionEditor tier={tier} />
@@ -201,25 +197,35 @@ function TierLineItems({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="w-full h-10 rounded-xl border border-dashed border-zinc-300 text-sm text-zinc-500 hover:border-zinc-500 hover:text-zinc-700 transition-colors"
+          className={buttonClass({ variant: "dashed", block: true })}
         >
-          + Add Line Item
+          + Add line item
         </button>
       )}
 
       {taxRatePercent > 0 && (
-        <div className="pt-3 border-t border-zinc-100 space-y-1 text-sm">
-          <div className="flex justify-between text-zinc-600">
+        <div className="pt-3 border-t border-line space-y-1.5 text-sm">
+          <div className="flex justify-between text-ink-muted">
             <span>Subtotal</span>
-            <span>{formatMoney(totals.subtotalCents, currency)}</span>
+            <Money
+              cents={totals.subtotalCents}
+              currency={currency}
+              size="xs"
+              tone="muted"
+            />
           </div>
-          <div className="flex justify-between text-zinc-600">
+          <div className="flex justify-between text-ink-muted">
             <span>Tax ({Number(taxRatePercent)}%)</span>
-            <span>{formatMoney(totals.taxCents, currency)}</span>
+            <Money
+              cents={totals.taxCents}
+              currency={currency}
+              size="xs"
+              tone="muted"
+            />
           </div>
-          <div className="flex justify-between font-semibold text-zinc-900">
+          <div className="flex justify-between font-semibold">
             <span>Total</span>
-            <span>{formatMoney(totals.totalCents, currency)}</span>
+            <Money cents={totals.totalCents} currency={currency} size="xs" />
           </div>
         </div>
       )}
@@ -229,9 +235,9 @@ function TierLineItems({
           type="button"
           disabled={isPending}
           onClick={handleRemoveTier}
-          className="w-full h-9 rounded-xl border border-red-200 text-xs font-medium text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+          className={buttonClass({ variant: "danger", size: "sm", block: true })}
         >
-          {isPending ? "Removing..." : `Remove ${TIER_LABELS[tier.label]} option`}
+          {isPending ? "Removing…" : `Remove ${tierLabel(tier.label)} option`}
         </button>
       )}
     </div>
@@ -250,18 +256,22 @@ function LineItemRow({ item, currency }: { item: LineItem; currency: string }) {
     <div className="flex items-center justify-between gap-2 py-1">
       <div className="min-w-0">
         <p className="text-sm font-medium truncate">{item.description}</p>
-        <p className="text-xs text-zinc-500">
-          {Number(item.quantity)} × {formatMoney(item.unitCents, currency)}
+        <p className="text-xs text-ink-muted">
+          {Number(item.quantity)} ×{" "}
+          <Money
+            cents={item.unitCents}
+            currency={currency}
+            size="xs"
+            tone="inherit"
+          />
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-sm font-semibold">
-          {formatMoney(item.totalCents, currency)}
-        </span>
+        <Money cents={item.totalCents} currency={currency} size="xs" />
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="text-xs text-zinc-500 underline"
+          className="text-xs font-semibold text-ink-muted underline underline-offset-4 hover:text-ink"
         >
           Edit
         </button>
@@ -271,7 +281,7 @@ function LineItemRow({ item, currency }: { item: LineItem; currency: string }) {
           onClick={() =>
             startTransition(() => { void deleteLineItem(item.id); })
           }
-          className="text-xs text-red-500 underline disabled:opacity-50"
+          className="text-xs font-semibold text-danger underline underline-offset-4 disabled:opacity-50"
         >
           Delete
         </button>
@@ -299,14 +309,14 @@ function AddLineItemForm({
   }
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(new FormData(e.currentTarget)); }} className="space-y-2 pt-2 border-t border-zinc-100">
+    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(new FormData(e.currentTarget)); }} className="space-y-2 pt-2 border-t border-line">
       <input
         name="description"
         type="text"
         required
         maxLength={200}
         placeholder="Description"
-        className="w-full h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+        className={inputClass()}
       />
       <div className="flex gap-2">
         <input
@@ -319,7 +329,7 @@ function AddLineItemForm({
           onFocus={selectOnFocus}
           defaultValue="1"
           placeholder="Qty"
-          className="w-20 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass({ full: false, className: "w-20" })}
         />
         <input
           name="unitPrice"
@@ -330,21 +340,21 @@ function AddLineItemForm({
           inputMode="decimal"
           onFocus={selectOnFocus}
           placeholder="Price ($)"
-          className="flex-1 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass({ full: false, className: "flex-1 min-w-0" })}
         />
       </div>
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={isPending}
-          className="flex-1 h-10 rounded-xl bg-zinc-900 text-white text-sm font-medium disabled:opacity-60"
+          className={buttonClass({ className: "flex-1" })}
         >
-          {isPending ? "Adding..." : "Add"}
+          {isPending ? "Adding…" : "Add"}
         </button>
         <button
           type="button"
           onClick={onDone}
-          className="flex-1 h-10 rounded-xl border border-zinc-300 text-sm font-medium"
+          className={buttonClass({ variant: "outline", className: "flex-1" })}
         >
           Cancel
         </button>
@@ -376,14 +386,14 @@ function EditLineItemForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2 pt-2 border-t border-zinc-100">
+    <form onSubmit={handleSubmit} className="space-y-2 pt-2 border-t border-line">
       <input
         name="description"
         type="text"
         required
         maxLength={200}
         defaultValue={item.description}
-        className="w-full h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+        className={inputClass()}
       />
       <div className="flex gap-2">
         <input
@@ -395,7 +405,7 @@ function EditLineItemForm({
           inputMode="decimal"
           onFocus={selectOnFocus}
           defaultValue={String(Number(item.quantity))}
-          className="w-20 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass({ full: false, className: "w-20" })}
         />
         <input
           name="unitPrice"
@@ -406,21 +416,21 @@ function EditLineItemForm({
           inputMode="decimal"
           onFocus={selectOnFocus}
           defaultValue={String(item.unitCents / 100)}
-          className="flex-1 h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass({ full: false, className: "flex-1 min-w-0" })}
         />
       </div>
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={isPending}
-          className="flex-1 h-10 rounded-xl bg-zinc-900 text-white text-sm font-medium disabled:opacity-60"
+          className={buttonClass({ className: "flex-1" })}
         >
-          {isPending ? "Saving..." : "Save"}
+          {isPending ? "Saving…" : "Save"}
         </button>
         <button
           type="button"
           onClick={onDone}
-          className="flex-1 h-10 rounded-xl border border-zinc-300 text-sm font-medium"
+          className={buttonClass({ variant: "outline", className: "flex-1" })}
         >
           Cancel
         </button>
@@ -479,16 +489,16 @@ function TemplateToolbar({
         <button
           type="button"
           onClick={() => setMode("apply")}
-          className="flex-1 h-10 rounded-xl border border-zinc-300 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          className={buttonClass({ variant: "outline", className: "flex-1" })}
         >
-          Apply Template
+          Apply template
         </button>
         <button
           type="button"
           onClick={() => setMode("save")}
-          className="flex-1 h-10 rounded-xl border border-zinc-300 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          className={buttonClass({ variant: "outline", className: "flex-1" })}
         >
-          Save as Template
+          Save as template
         </button>
       </div>
     );
@@ -503,7 +513,7 @@ function TemplateToolbar({
           onChange={setAllTrades}
         />
         {visible.length === 0 ? (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-ink-muted">
             No {tradeLabel(userTradeType)} templates yet — tap{" "}
             <strong>All trades</strong> to browse the rest.
           </p>
@@ -514,10 +524,10 @@ function TemplateToolbar({
               type="button"
               disabled={isPending}
               onClick={() => handleApply(t.id)}
-              className="w-full p-3 rounded-2xl border-2 border-zinc-200 text-left hover:border-zinc-400 transition-colors disabled:opacity-50"
+              className="w-full p-3 rounded-2xl border-2 border-line bg-surface text-left hover:border-line-strong transition-colors disabled:opacity-50"
             >
               <p className="font-semibold text-sm">{t.name}</p>
-              <p className="text-xs text-zinc-500 mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 {tradeLabel(t.tradeType)}
                 {t.userId !== null && " · Mine"}
               </p>
@@ -527,7 +537,7 @@ function TemplateToolbar({
         <button
           type="button"
           onClick={() => setMode("none")}
-          className="w-full h-10 rounded-xl border border-zinc-300 text-sm font-medium"
+          className={buttonClass({ variant: "outline", block: true })}
         >
           Cancel
         </button>
@@ -543,20 +553,20 @@ function TemplateToolbar({
         value={saveName}
         onChange={(e) => setSaveName(e.target.value)}
         placeholder="Template name"
-        className="w-full h-11 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+        className={inputClass()}
       />
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={isPending}
-          className="flex-1 h-10 rounded-xl bg-zinc-900 text-white text-sm font-medium disabled:opacity-60"
+          className={buttonClass({ className: "flex-1" })}
         >
-          {isPending ? "Saving..." : "Save"}
+          {isPending ? "Saving…" : "Save"}
         </button>
         <button
           type="button"
           onClick={() => setMode("none")}
-          className="flex-1 h-10 rounded-xl border border-zinc-300 text-sm font-medium"
+          className={buttonClass({ variant: "outline", className: "flex-1" })}
         >
           Cancel
         </button>
@@ -584,22 +594,22 @@ function TierDescriptionEditor({ tier }: { tier: Tier }) {
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Describe what's included in this tier..."
+          placeholder="What's included in this option…"
           rows={3}
-          className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass({ size: "area" })}
         />
         <div className="flex gap-2">
           <button
             type="submit"
             disabled={isPending}
-            className="flex-1 h-9 rounded-xl bg-zinc-900 text-white text-xs font-medium disabled:opacity-60"
+            className={buttonClass({ size: "sm", className: "flex-1" })}
           >
-            {isPending ? "Saving..." : "Save"}
+            {isPending ? "Saving…" : "Save"}
           </button>
           <button
             type="button"
             onClick={() => { setValue(tier.description ?? ""); setEditing(false); }}
-            className="flex-1 h-9 rounded-xl border border-zinc-300 text-xs font-medium"
+            className={buttonClass({ variant: "outline", size: "sm", className: "flex-1" })}
           >
             Cancel
           </button>
@@ -612,7 +622,7 @@ function TierDescriptionEditor({ tier }: { tier: Tier }) {
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="w-full text-left text-sm text-zinc-600 hover:text-zinc-900"
+      className="w-full text-left text-sm text-ink-muted hover:text-ink"
     >
       {tier.description}
     </button>
@@ -620,7 +630,7 @@ function TierDescriptionEditor({ tier }: { tier: Tier }) {
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="text-xs text-zinc-400 underline"
+      className="text-xs font-semibold text-ink-muted underline underline-offset-4 hover:text-ink"
     >
       + Add description
     </button>

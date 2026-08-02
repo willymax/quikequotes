@@ -1,6 +1,7 @@
 "use client";
 
 import { tradeLabel } from "@/lib/trades";
+import { chipClass } from "@/lib/ui";
 
 /**
  * Two chips toggling a template list between the business's own trade and every
@@ -41,11 +42,7 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`h-8 px-3 rounded-full text-xs font-medium transition-colors ${
-        active
-          ? "bg-zinc-900 text-white"
-          : "border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
-      }`}
+      className={chipClass(active)}
     >
       {children}
     </button>

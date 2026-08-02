@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { sendQuote } from "@/app/actions/quotes";
 import { useRouter } from "next/navigation";
+import { buttonClass } from "@/lib/ui";
 
 export function SendQuoteButton({
   quoteId,
@@ -29,9 +30,9 @@ export function SendQuoteButton({
     <button
       onClick={handleSend}
       disabled={isPending}
-      className="flex-1 h-11 rounded-xl bg-zinc-900 text-white font-semibold text-sm disabled:opacity-60"
+      className={buttonClass({ variant: "accent", className: "flex-1" })}
     >
-      {isPending ? "Sending..." : status === "DRAFT" ? "Send to Client" : "Resend"}
+      {isPending ? "Sending…" : status === "DRAFT" ? "Send to client" : "Resend"}
     </button>
   );
 }

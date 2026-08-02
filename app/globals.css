@@ -1,14 +1,71 @@
 @import "tailwindcss";
 
+/*
+  QuikeQuotes visual system — one set of tokens for the marketing site and the
+  product. The metaphor is a job ticket: carbon-dark ink on warm work-order
+  paper, with hi-vis amber reserved for two things only — the action you want
+  taken, and the quote that needs chasing.
+
+  If you change a hex here, also change the copies in app/icon.tsx,
+  app/opengraph-image.tsx, app/manifest.ts and the `viewport.themeColor` in
+  app/layout.tsx — those render outside CSS and can't read a variable.
+*/
 :root {
+  /* Ink — carbon. Structure, text, primary actions. */
   --color-ink: #14171c;
   --color-ink-soft: #1e222a;
   --color-ink-muted: #6b6f76;
+
+  /* Paper — warm, not blue-grey. Everything sits on this. */
   --color-paper: #ffffff;
   --color-paper-warm: #f7f6f3;
   --color-paper-muted: #a9acb3;
+
+  /* Amber — hi-vis. Spend it sparingly or it stops meaning anything. */
   --color-amber: #f5a623;
   --color-amber-deep: #db8f12;
+  --color-amber-wash: #fdf3e2;
+
+  /* Hairlines. Warm greys, so borders don't read cold against warm paper. */
+  --color-line: #e6e3dd;
+  --color-line-strong: #d2cec6;
+
+  /* Surfaces */
+  --color-surface: #ffffff;
+  --color-surface-sunk: #f7f6f3;
+
+  /*
+    Status. Each has a `-rail` (the solid left edge on a quote card) and a
+    `-fill` / `-text` pair (the badge). Deliberately warm-tuned rather than
+    Tailwind's stock pastels, which are the tell of an unstyled app.
+
+    VIEWED is amber on purpose: a quote the client has opened is the one worth
+    chasing, so it gets the attention colour. That's the rail earning its keep.
+  */
+  --color-draft-rail: #9a9ba0;
+  --color-draft-fill: #efede9;
+  --color-draft-text: #5f646c;
+
+  --color-sent-rail: #3b6ea5;
+  --color-sent-fill: #e8f0f8;
+  --color-sent-text: #2b5480;
+
+  --color-viewed-rail: #f5a623;
+  --color-viewed-fill: #fdf0da;
+  --color-viewed-text: #8d5c07;
+
+  --color-accepted-rail: #2f7a4d;
+  --color-accepted-fill: #e4f1e9;
+  --color-accepted-text: #24603b;
+
+  --color-closed-rail: #b4afa6;
+  --color-closed-fill: #f0eeea;
+  --color-closed-text: #6f7480;
+
+  /* Destructive */
+  --color-danger: #b4462f;
+  --color-danger-fill: #fbeae6;
+  --color-danger-line: #eccec6;
 }
 
 @theme inline {
@@ -20,7 +77,34 @@
   --color-paper-muted: var(--color-paper-muted);
   --color-amber: var(--color-amber);
   --color-amber-deep: var(--color-amber-deep);
-  --font-sans: var(--font-sora);
+  --color-amber-wash: var(--color-amber-wash);
+
+  --color-line: var(--color-line);
+  --color-line-strong: var(--color-line-strong);
+  --color-surface: var(--color-surface);
+  --color-surface-sunk: var(--color-surface-sunk);
+
+  --color-draft-rail: var(--color-draft-rail);
+  --color-draft-fill: var(--color-draft-fill);
+  --color-draft-text: var(--color-draft-text);
+  --color-sent-rail: var(--color-sent-rail);
+  --color-sent-fill: var(--color-sent-fill);
+  --color-sent-text: var(--color-sent-text);
+  --color-viewed-rail: var(--color-viewed-rail);
+  --color-viewed-fill: var(--color-viewed-fill);
+  --color-viewed-text: var(--color-viewed-text);
+  --color-accepted-rail: var(--color-accepted-rail);
+  --color-accepted-fill: var(--color-accepted-fill);
+  --color-accepted-text: var(--color-accepted-text);
+  --color-closed-rail: var(--color-closed-rail);
+  --color-closed-fill: var(--color-closed-fill);
+  --color-closed-text: var(--color-closed-text);
+
+  --color-danger: var(--color-danger);
+  --color-danger-fill: var(--color-danger-fill);
+  --color-danger-line: var(--color-danger-line);
+
+  --font-sans: var(--font-archivo);
   --font-mono: var(--font-plex-mono);
 }
 
@@ -28,6 +112,50 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+  Focus. Nothing in this app had a visible focus ring before — inputs carried a
+  Tailwind `focus:ring`, buttons and links carried nothing at all. One rule
+  covers every interactive element; `.on-ink` flips the ring to amber for the
+  dark bands (hero, headers, footer, consent banner) where ink is invisible.
+*/
+:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--color-ink));
+  outline-offset: 2px;
+}
+
+.on-ink {
+  --focus-ring: var(--color-amber);
+}
+
+/*
+  Type. Archivo is variable on both weight and width; the display treatment
+  pushes the width axis out to 112 so headlines read like stencilled signage
+  rather than a default UI face. `font-weight` still comes from Tailwind —
+  font-variation-settings only overrides the axes it names.
+*/
+.type-display {
+  font-variation-settings: "wdth" 112;
+  letter-spacing: -0.032em;
+  line-height: 1.03;
+}
+
+.type-eyebrow {
+  font-variation-settings: "wdth" 88;
+  font-weight: 650;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/*
+  Money and any figure that sits in a column. Tabular numerals so digits line
+  up between rows — a quote list where the totals don't align looks unpriced.
+*/
+.type-num {
+  font-family: var(--font-plex-mono), ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 @keyframes fade-up {
@@ -50,5 +178,12 @@ body {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }

@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { createQuote } from "@/app/actions/quotes";
 import { matchesTrade, tradeLabel } from "@/lib/trades";
 import { TradeFilterChips } from "@/app/components/TradeFilterChips";
+import { buttonClass, inputClass, labelClass, PAGE_SHELL } from "@/lib/ui";
 
 type Template = {
   id: string;
@@ -90,30 +91,31 @@ export function QuoteWizard({
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
-      {/* Progress */}
+    <div className={PAGE_SHELL}>
+      {/* Progress. The current step is amber, completed steps ink, so at a
+          glance you can tell where you are and how much is left. */}
       <div className="flex items-center gap-2 mb-8">
         {STEPS.map((s, i) => (
           <div key={s.num} className="flex items-center gap-2 flex-1">
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                step >= s.num
-                  ? "bg-zinc-900 text-white"
-                  : "bg-zinc-100 text-zinc-400"
+                step === s.num
+                  ? "bg-amber text-ink"
+                  : step > s.num
+                    ? "bg-ink text-paper"
+                    : "bg-line text-ink-muted"
               }`}
             >
               {s.num}
             </div>
             <span
-              className={`text-sm font-medium ${
-                step === s.num ? "text-zinc-900" : "text-zinc-400"
+              className={`text-sm font-semibold ${
+                step === s.num ? "text-ink" : "text-ink-muted"
               }`}
             >
               {s.label}
             </span>
-            {i < STEPS.length - 1 && (
-              <div className="flex-1 h-px bg-zinc-200" />
-            )}
+            {i < STEPS.length - 1 && <div className="flex-1 h-px bg-line" />}
           </div>
         ))}
       </div>
@@ -122,21 +124,25 @@ export function QuoteWizard({
         {/* Step 1 — Client Info */}
         {step === 1 && (
           <div className="space-y-5">
-            <h2 className="text-xl font-bold">Client Info</h2>
+            <h2 className="type-display text-2xl font-extrabold">Who&apos;s it for?</h2>
 
             {process.env.NODE_ENV === "development" && (
               <button
                 type="button"
                 onClick={fillTestData}
-                className="w-full h-9 rounded-xl border border-dashed border-zinc-300 text-xs text-zinc-500 hover:border-zinc-500 hover:text-zinc-700 transition-colors"
+                className={buttonClass({
+                  variant: "dashed",
+                  size: "sm",
+                  block: true,
+                })}
               >
-                Fill Test Data (dev only)
+                Fill test data (dev only)
               </button>
             )}
 
             <div>
-              <label className="block text-sm font-medium mb-1.5" htmlFor="title">
-                Quote Title <span className="text-red-500">*</span>
+              <label className={labelClass()} htmlFor="title">
+                Quote title <span className="text-danger">*</span>
               </label>
               <input
                 id="title"
@@ -145,14 +151,14 @@ export function QuoteWizard({
                 required
                 maxLength={200}
                 defaultValue={clientFields.title}
-                placeholder="Exterior Painting — 123 Main St"
-                className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                placeholder="Exterior painting — 123 Main St"
+                className={inputClass()}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5" htmlFor="clientName">
-                Client Name <span className="text-red-500">*</span>
+              <label className={labelClass()} htmlFor="clientName">
+                Client name <span className="text-danger">*</span>
               </label>
               <input
                 id="clientName"
@@ -162,13 +168,13 @@ export function QuoteWizard({
                 maxLength={100}
                 defaultValue={clientFields.clientName}
                 placeholder="John Smith"
-                className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                className={inputClass()}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5" htmlFor="clientPhone">
-                Client Phone
+              <label className={labelClass()} htmlFor="clientPhone">
+                Client phone
               </label>
               <input
                 id="clientPhone"
@@ -176,26 +182,26 @@ export function QuoteWizard({
                 type="tel"
                 maxLength={30}
                 placeholder="+1 555 000 0000"
-                className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                className={inputClass()}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5" htmlFor="clientEmail">
-                Client Email
+              <label className={labelClass()} htmlFor="clientEmail">
+                Client email
               </label>
               <input
                 id="clientEmail"
                 name="clientEmail"
                 type="email"
                 placeholder="john@example.com"
-                className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                className={inputClass()}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5" htmlFor="jobAddress">
-                Job Address
+              <label className={labelClass()} htmlFor="jobAddress">
+                Job address
               </label>
               <input
                 id="jobAddress"
@@ -203,12 +209,12 @@ export function QuoteWizard({
                 type="text"
                 maxLength={200}
                 placeholder="123 Main St, City, State"
-                className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                className={inputClass()}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5" htmlFor="notes">
+              <label className={labelClass()} htmlFor="notes">
                 Notes (optional)
               </label>
               <textarea
@@ -216,14 +222,14 @@ export function QuoteWizard({
                 name="notes"
                 rows={3}
                 maxLength={1000}
-                placeholder="Any special instructions or scope details..."
-                className="w-full px-4 py-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
+                placeholder="Special instructions or scope details…"
+                className={inputClass({ size: "area" })}
               />
             </div>
 
             <button
               type="submit"
-              className="w-full h-12 rounded-xl bg-zinc-900 text-white font-semibold text-base"
+              className={buttonClass({ size: "lg", block: true })}
             >
               Next
             </button>
@@ -233,9 +239,12 @@ export function QuoteWizard({
         {/* Step 2 — Template Picker */}
         {step === 2 && (
           <div className="space-y-5">
-            <h2 className="text-xl font-bold">Pick a Template</h2>
-            <p className="text-sm text-zinc-500">
-              Templates pre-fill your line items. You can customize everything after.
+            <h2 className="type-display text-2xl font-extrabold">
+              Start from a template
+            </h2>
+            <p className="text-sm text-ink-muted">
+              Templates pre-fill your line items. You can change everything
+              afterwards.
             </p>
 
             <TradeFilterChips
@@ -250,12 +259,14 @@ export function QuoteWizard({
                 onClick={() => { setSelectedTemplate(""); setStep(3); }}
                 className={`w-full p-4 rounded-2xl border-2 text-left transition-colors ${
                   selectedTemplate === ""
-                    ? "border-zinc-900 bg-zinc-50"
-                    : "border-zinc-200 hover:border-zinc-400"
+                    ? "border-ink bg-surface-sunk"
+                    : "border-line bg-surface hover:border-line-strong"
                 }`}
               >
-                <p className="font-semibold">Start Blank</p>
-                <p className="text-sm text-zinc-500 mt-0.5">Add line items manually</p>
+                <p className="font-semibold">Start blank</p>
+                <p className="text-sm text-ink-muted mt-0.5">
+                  Add line items yourself
+                </p>
               </button>
 
               {visibleTemplates.map((t) => (
@@ -265,12 +276,12 @@ export function QuoteWizard({
                   onClick={() => { setSelectedTemplate(t.id); setStep(3); }}
                   className={`w-full p-4 rounded-2xl border-2 text-left transition-colors ${
                     selectedTemplate === t.id
-                      ? "border-zinc-900 bg-zinc-50"
-                      : "border-zinc-200 hover:border-zinc-400"
+                      ? "border-ink bg-surface-sunk"
+                      : "border-line bg-surface hover:border-line-strong"
                   }`}
                 >
                   <p className="font-semibold">{t.name}</p>
-                  <p className="text-sm text-zinc-500 mt-0.5">
+                  <p className="text-sm text-ink-muted mt-0.5">
                     {tradeLabel(t.tradeType)}
                     {t.userId !== null && " · Mine"}
                   </p>
@@ -278,9 +289,10 @@ export function QuoteWizard({
               ))}
 
               {visibleTemplates.length === 0 && (
-                <p className="text-sm text-zinc-500 px-1">
+                <p className="text-sm text-ink-muted px-1">
                   No {tradeLabel(userTradeType)} templates yet — tap{" "}
-                  <strong>All trades</strong> to browse the rest.
+                  <strong className="text-ink">All trades</strong> to browse the
+                  rest.
                 </p>
               )}
             </div>
@@ -288,7 +300,11 @@ export function QuoteWizard({
             <button
               type="button"
               onClick={back}
-              className="w-full h-12 rounded-xl border border-zinc-300 text-zinc-700 font-medium text-base"
+              className={buttonClass({
+                variant: "outline",
+                size: "lg",
+                block: true,
+              })}
             >
               Back
             </button>
@@ -298,36 +314,48 @@ export function QuoteWizard({
         {/* Step 3 — Review & Create */}
         {step === 3 && (
           <div className="space-y-5">
-            <h2 className="text-xl font-bold">Create Quote</h2>
-            <p className="text-sm text-zinc-500">
-              Your quote will be created with{" "}
-              <span className="font-medium text-zinc-700">Good / Better / Best</span> tiers.
-              You&apos;ll add photos and customize pricing on the next screen.
+            <h2 className="type-display text-2xl font-extrabold">
+              Ready to build it
+            </h2>
+            <p className="text-sm text-ink-muted leading-relaxed">
+              You&apos;ll get{" "}
+              <span className="font-semibold text-ink">Good / Better / Best</span>{" "}
+              options to price. Photos and line items come next.
             </p>
 
-            <div className="rounded-2xl bg-zinc-50 p-4 space-y-2 text-sm">
-              <p className="text-zinc-500">Template</p>
-              <p className="font-medium">
+            <div className="rounded-2xl border border-line bg-surface p-4">
+              <p className="type-eyebrow text-[10px] text-ink-muted mb-1.5">
+                Template
+              </p>
+              <p className="font-semibold">
                 {selectedTemplate
                   ? templates.find((t) => t.id === selectedTemplate)?.name
                   : "Blank"}
               </p>
             </div>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-danger font-semibold">{error}</p>}
 
             <button
               type="submit"
               disabled={isPending}
-              className="w-full h-12 rounded-xl bg-zinc-900 text-white font-semibold text-base disabled:opacity-60"
+              className={buttonClass({
+                variant: "accent",
+                size: "lg",
+                block: true,
+              })}
             >
-              {isPending ? "Creating..." : "Create Quote"}
+              {isPending ? "Creating…" : "Create quote"}
             </button>
 
             <button
               type="button"
               onClick={back}
-              className="w-full h-12 rounded-xl border border-zinc-300 text-zinc-700 font-medium text-base"
+              className={buttonClass({
+                variant: "outline",
+                size: "lg",
+                block: true,
+              })}
             >
               Back
             </button>

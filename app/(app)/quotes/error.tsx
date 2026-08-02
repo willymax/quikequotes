@@ -1,5 +1,7 @@
 "use client";
 
+import { buttonClass, PAGE_SHELL } from "@/lib/ui";
+
 export default function QuotesError({
   error,
   reset,
@@ -8,13 +10,13 @@ export default function QuotesError({
   reset: () => void;
 }) {
   return (
-    <div className="max-w-lg mx-auto px-4 py-16 text-center space-y-4">
-      <h1 className="text-xl font-bold">Something went wrong</h1>
-      <p className="text-sm text-zinc-500 break-words">{error.message}</p>
+    <div className={`${PAGE_SHELL} text-center space-y-4`}>
+      <h1 className="type-display text-2xl font-extrabold">Something went wrong</h1>
+      <p className="text-sm text-ink-muted break-words">{error.message}</p>
       <button
         type="button"
         onClick={reset}
-        className="h-11 px-6 rounded-xl bg-zinc-900 text-white font-semibold text-sm"
+        className={buttonClass()}
       >
         Try again
       </button>

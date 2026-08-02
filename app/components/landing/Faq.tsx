@@ -1,3 +1,5 @@
+import { SectionHeading } from "./SectionHeading";
+
 const FAQS = [
   {
     q: "Does this work for my trade?",
@@ -25,19 +27,17 @@ export function Faq() {
   return (
     <section className="px-6 py-20 bg-paper-warm">
       <div className="max-w-2xl mx-auto">
-        <h2 className="text-3xl sm:text-4xl font-extrabold tracking-[-0.02em] text-center mb-12 text-ink">
-          Questions, answered
-        </h2>
+        <SectionHeading title="Questions, answered" />
 
         <div className="space-y-3">
           {FAQS.map((f) => (
             <details
               key={f.q}
-              className="group rounded-2xl bg-paper p-5 shadow-sm"
+              className="group rounded-2xl bg-paper border border-line p-5"
             >
               <summary className="font-semibold cursor-pointer list-none flex items-center justify-between gap-4 text-ink">
                 {f.q}
-                <span className="shrink-0 w-6 h-6 rounded-full bg-amber/15 text-amber flex items-center justify-center text-lg leading-none group-open:rotate-45 transition-transform">
+                <span className="shrink-0 w-6 h-6 rounded-full bg-amber/15 text-amber-deep flex items-center justify-center text-lg leading-none group-open:rotate-45 transition-transform">
                   +
                 </span>
               </summary>

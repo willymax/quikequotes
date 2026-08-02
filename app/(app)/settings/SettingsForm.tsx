@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { updateBusinessProfile } from "@/app/actions/settings";
 import { CURRENCIES } from "@/lib/currency";
+import { buttonClass, inputClass, labelClass } from "@/lib/ui";
 
 type User = {
   businessName: string | null;
@@ -61,14 +62,14 @@ export function SettingsForm({ user }: { user: User }) {
         <button
           type="button"
           onClick={fillTestData}
-          className="w-full h-9 rounded-xl border border-dashed border-zinc-300 text-xs text-zinc-500 hover:border-zinc-500 hover:text-zinc-700 transition-colors"
+          className={buttonClass({ variant: "dashed", size: "sm", block: true })}
         >
-          Fill Test Data (dev only)
+          Fill test data (dev only)
         </button>
       )}
       <div>
-        <label className="block text-sm font-medium mb-1.5" htmlFor="businessName">
-          Business Name <span className="text-red-500">*</span>
+        <label className={labelClass()} htmlFor="businessName">
+          Business name <span className="text-danger">*</span>
         </label>
         <input
           id="businessName"
@@ -77,13 +78,13 @@ export function SettingsForm({ user }: { user: User }) {
           required
           defaultValue={user.businessName ?? ""}
           placeholder="Acme Painting Co."
-          className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass()}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1.5" htmlFor="phone">
-          Business Phone
+        <label className={labelClass()} htmlFor="phone">
+          Business phone
         </label>
         <input
           id="phone"
@@ -91,19 +92,19 @@ export function SettingsForm({ user }: { user: User }) {
           type="tel"
           defaultValue={user.phone ?? ""}
           placeholder="+1 555 000 0000"
-          className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass()}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1.5" htmlFor="tradeType">
-          Trade Type <span className="text-red-500">*</span>
+        <label className={labelClass()} htmlFor="tradeType">
+          Trade <span className="text-danger">*</span>
         </label>
         <select
           id="tradeType"
           name="tradeType"
           defaultValue={user.tradeType}
-          className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass()}
         >
           {TRADE_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
@@ -114,7 +115,7 @@ export function SettingsForm({ user }: { user: User }) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1.5" htmlFor="logoUrl">
+        <label className={labelClass()} htmlFor="logoUrl">
           Logo URL
         </label>
         <input
@@ -123,13 +124,13 @@ export function SettingsForm({ user }: { user: User }) {
           type="url"
           defaultValue={user.logoUrl ?? ""}
           placeholder="https://..."
-          className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass()}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1.5" htmlFor="taxRatePercent">
-          Tax Rate (%)
+        <label className={labelClass()} htmlFor="taxRatePercent">
+          Default tax rate (%)
         </label>
         <input
           id="taxRatePercent"
@@ -141,23 +142,23 @@ export function SettingsForm({ user }: { user: User }) {
           inputMode="decimal"
           onFocus={(e) => e.currentTarget.select()}
           defaultValue={String(user.taxRatePercent)}
-          className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass()}
         />
-        <p className="mt-1.5 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-ink-muted leading-relaxed">
           Applied to new quotes. Set 0 for no tax — you can still override the rate
           on an individual quote.
         </p>
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1.5" htmlFor="currency">
-          Currency <span className="text-red-500">*</span>
+        <label className={labelClass()} htmlFor="currency">
+          Currency <span className="text-danger">*</span>
         </label>
         <select
           id="currency"
           name="currency"
           defaultValue={user.currency}
-          className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass()}
         >
           {CURRENCIES.map((c) => (
             <option key={c.code} value={c.code}>
@@ -165,21 +166,23 @@ export function SettingsForm({ user }: { user: User }) {
             </option>
           ))}
         </select>
-        <p className="mt-1.5 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-ink-muted leading-relaxed">
           Applied to new quotes. Quotes already sent keep the currency they were
           created with — changing this never relabels an amount a client has seen.
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
-      {saved && <p className="text-sm text-green-600 font-medium">Saved!</p>}
+      {error && <p className="text-sm text-danger font-semibold">{error}</p>}
+      {saved && (
+        <p className="text-sm text-accepted-text font-semibold">Saved.</p>
+      )}
 
       <button
         type="submit"
         disabled={isPending}
-        className="w-full h-12 rounded-xl bg-zinc-900 text-white font-semibold text-base hover:bg-zinc-700 transition-colors disabled:opacity-60"
+        className={buttonClass({ variant: "accent", size: "lg", block: true })}
       >
-        {isPending ? "Saving..." : "Save Profile"}
+        {isPending ? "Saving…" : "Save profile"}
       </button>
     </form>
   );

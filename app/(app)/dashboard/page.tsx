@@ -2,17 +2,13 @@ import Link from "next/link";
 import type { Prisma, QuoteStatus } from "@prisma/client";
 import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { formatMoney, quoteTotals } from "@/lib/money";
+import { quoteTotals } from "@/lib/money";
 import { normalizeCurrency } from "@/lib/currency";
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: "Draft", color: "bg-zinc-100 text-zinc-600" },
-  SENT: { label: "Sent", color: "bg-blue-100 text-blue-700" },
-  VIEWED: { label: "Viewed", color: "bg-yellow-100 text-yellow-700" },
-  ACCEPTED: { label: "Accepted", color: "bg-green-100 text-green-700" },
-  DECLINED: { label: "Declined", color: "bg-red-100 text-red-600" },
-  EXPIRED: { label: "Expired", color: "bg-zinc-100 text-zinc-500" },
-};
+import { statusMeta } from "@/lib/status";
+import { buttonClass, chipClass, inputClass, PAGE_SHELL } from "@/lib/ui";
+import { Money } from "@/app/components/ui/Money";
+import { StatusBadge } from "@/app/components/ui/StatusBadge";
+import { PlusIcon } from "@/app/components/icons";
 
 // A viewed quote is still an open opportunity, so it lives under Sent rather
 // than getting its own chip; declined and expired both mean "over".
@@ -88,27 +84,24 @@ export default async function DashboardPage({
     },
   });
 
-  // Each quote snapshots its own currency, so the money rollups only add up
-  // quotes in the business's current one — summing KES into USD would be a lie.
-  // Counts and acceptance rate still cover every quote.
-  const rollupCurrency = normalizeCurrency(user.currency);
+  // Each quote snapshots its own currency, so amounts are totalled per currency
+  // and never converted — adding KES into USD would be a lie, and there's no FX
+  // rate to do it honestly with. Totalling only the business currency (what this
+  // used to do) is worse: a business whose quotes are mostly in another currency
+  // saw a rollup of zero next to a list full of priced quotes.
+  const businessCurrency = normalizeCurrency(user.currency);
 
   const counts = new Map<string, number>();
-  let pipelineCents = 0;
-  let wonCents = 0;
-  let otherCurrencyCount = 0;
+  const byCurrency = new Map<string, { open: number; won: number }>();
 
   for (const q of allQuotes) {
     counts.set(q.status, (counts.get(q.status) ?? 0) + 1);
     const rate = Number(q.taxRatePercent);
-
-    if (normalizeCurrency(q.currency) !== rollupCurrency) {
-      otherCurrencyCount += 1;
-      continue;
-    }
+    const code = normalizeCurrency(q.currency);
+    const bucket = byCurrency.get(code) ?? { open: 0, won: 0 };
 
     if (q.status === "SENT" || q.status === "VIEWED") {
-      pipelineCents += Math.max(
+      bucket.open += Math.max(
         ...q.tiers.map((t) => quoteTotals(t.totalCents, rate).totalCents),
         0
       );
@@ -116,10 +109,28 @@ export default async function DashboardPage({
     if (q.status === "ACCEPTED") {
       const accepted = q.tiers.find((t) => t.id === q.acceptedTierId);
       if (accepted) {
-        wonCents += quoteTotals(accepted.totalCents, rate).totalCents;
+        bucket.won += quoteTotals(accepted.totalCents, rate).totalCents;
       }
     }
+    byCurrency.set(code, bucket);
   }
+
+  /**
+   * Currencies carrying an amount, largest first. Falls back to a single zero in
+   * the business currency so the card always has a figure to show rather than
+   * collapsing to nothing on a brand-new account.
+   */
+  const totalsFor = (key: "open" | "won") => {
+    const rows = [...byCurrency.entries()]
+      .map(([code, b]) => ({ code, cents: b[key] }))
+      .filter((r) => r.cents > 0)
+      .sort((a, b) => b.cents - a.cents);
+    return rows.length > 0 ? rows : [{ code: businessCurrency, cents: 0 }];
+  };
+
+  const openTotals = totalsFor("open");
+  const wonTotals = totalsFor("won");
+  const mixedCurrency = byCurrency.size > 1;
 
   const tabCount = (statuses: readonly QuoteStatus[] | null) =>
     statuses === null
@@ -133,6 +144,9 @@ export default async function DashboardPage({
   const acceptanceRate = decided
     ? Math.round(((counts.get("ACCEPTED") ?? 0) / decided) * 100)
     : null;
+
+  const openCount = (counts.get("SENT") ?? 0) + (counts.get("VIEWED") ?? 0);
+  const viewedCount = counts.get("VIEWED") ?? 0;
 
   const where: Prisma.QuoteWhereInput = { userId: user.id };
   if (tab.statuses) where.status = { in: [...tab.statuses] };
@@ -176,16 +190,22 @@ export default async function DashboardPage({
 
   if (allQuotes.length === 0) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Quotes</h1>
-        <div className="text-center py-16 text-zinc-500">
-          <p className="text-lg font-medium mb-2">No quotes yet</p>
-          <p className="text-sm mb-6">Create your first quote in under 3 minutes.</p>
+      <div className={PAGE_SHELL}>
+        <h1 className="type-display text-3xl font-extrabold mb-8">Quotes</h1>
+        <div className="rounded-2xl border border-dashed border-line-strong bg-surface px-6 py-14 text-center">
+          <p className="type-display text-xl font-bold mb-2">
+            Nothing quoted yet
+          </p>
+          <p className="text-sm text-ink-muted mb-7 max-w-xs mx-auto leading-relaxed">
+            Pick a trade template, add your line items, and send it before you
+            leave the driveway.
+          </p>
           <Link
             href="/quotes/new"
-            className="inline-flex h-12 px-6 rounded-xl bg-zinc-900 text-white font-semibold items-center"
+            className={buttonClass({ variant: "accent", size: "lg" })}
           >
-            Create Quote
+            <PlusIcon size={18} />
+            Create your first quote
           </Link>
         </div>
       </div>
@@ -193,51 +213,92 @@ export default async function DashboardPage({
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Quotes</h1>
+    <div className={PAGE_SHELL}>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="type-display text-3xl font-extrabold">Quotes</h1>
         <Link
           href="/quotes/new"
-          className="h-10 px-4 rounded-full bg-zinc-900 text-white text-sm font-medium flex items-center"
+          className={buttonClass({ size: "sm", pill: true })}
         >
-          + New Quote
+          <PlusIcon size={16} />
+          New
         </Link>
       </div>
 
-      {/* Rollups */}
-      <div className="grid grid-cols-3 gap-2 mb-2">
-        <Stat label="Open" value={formatMoney(pipelineCents, rollupCurrency)} />
-        <Stat label="Won" value={formatMoney(wonCents, rollupCurrency)} />
-        <Stat
-          label="Accepted"
-          value={acceptanceRate === null ? "—" : `${acceptanceRate}%`}
-        />
-      </div>
+      {/*
+        The pipeline figure is the reason to open this app in the morning, so it
+        gets the whole card and the hi-vis treatment, rather than being one of
+        three equal grey tiles. Won and acceptance rate sit underneath it as
+        context, not as peers.
+      */}
+      <section className="rounded-2xl bg-ink on-ink p-5 mb-4">
+        <p className="type-eyebrow text-[10px] text-paper-muted mb-2">
+          Open pipeline
+        </p>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          {openTotals.map((t, i) => (
+            <Money
+              key={t.code}
+              cents={t.cents}
+              currency={t.code}
+              // The biggest number leads; any others sit beside it, smaller.
+              size={i === 0 ? "xl" : "md"}
+              tone="accent"
+            />
+          ))}
+        </div>
+        <p className="mt-2 text-sm text-paper-muted">
+          {openCount === 0
+            ? "Nothing out with clients right now."
+            : `${openCount} quote${openCount === 1 ? "" : "s"} out${
+                viewedCount > 0 ? ` · ${viewedCount} opened` : ""
+              }`}
+        </p>
 
-      {otherCurrencyCount > 0 && (
-        <p className="text-[11px] text-zinc-400 mb-4">
-          Open and Won cover {rollupCurrency} only — {otherCurrencyCount} quote
-          {otherCurrencyCount === 1 ? "" : "s"} in another currency
-          {otherCurrencyCount === 1 ? " is" : " are"} excluded.
+        <div className="mt-5 pt-4 border-t border-white/10 grid grid-cols-2 gap-4">
+          <div>
+            <p className="type-eyebrow text-[10px] text-paper-muted mb-1">Won</p>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              {wonTotals.map((t) => (
+                <Money
+                  key={t.code}
+                  cents={t.cents}
+                  currency={t.code}
+                  size="sm"
+                  tone="invert"
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="type-eyebrow text-[10px] text-paper-muted mb-1">
+              Accept rate
+            </p>
+            <p className="type-num text-base font-semibold text-paper">
+              {acceptanceRate === null ? "—" : `${acceptanceRate}%`}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {mixedCurrency && (
+        <p className="text-[11px] text-ink-muted mb-4">
+          Totalled per currency — amounts are never converted.
         </p>
       )}
 
       {/* Status tabs */}
-      <div className="flex gap-2 overflow-x-auto whitespace-nowrap -mx-4 px-4 pb-1 mb-4">
+      <div className="flex gap-2 overflow-x-auto whitespace-nowrap -mx-4 px-4 pb-1 mb-3 mt-4">
         {TABS.map((t) => {
           const active = t.slug === tab.slug;
           return (
             <Link
               key={t.slug}
               href={dashboardHref({ tab: t.slug, q: search, sort })}
-              className={`h-8 px-3 rounded-full text-xs font-medium flex items-center shrink-0 ${
-                active
-                  ? "bg-zinc-900 text-white"
-                  : "border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
-              }`}
+              className={chipClass(active)}
             >
               {t.label}
-              <span className={`ml-1.5 ${active ? "opacity-70" : "text-zinc-400"}`}>
+              <span className={`ml-1.5 ${active ? "opacity-60" : "opacity-70"}`}>
                 {tabCount(t.statuses)}
               </span>
             </Link>
@@ -254,12 +315,16 @@ export default async function DashboardPage({
           defaultValue={search}
           maxLength={100}
           placeholder="Search title or client"
-          className="flex-1 min-w-0 h-10 px-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass({ size: "sm", className: "flex-1 min-w-0" })}
         />
         <select
           name="sort"
           defaultValue={sort}
-          className="h-10 px-2 text-sm border border-zinc-300 rounded-xl bg-white"
+          className={inputClass({
+            size: "sm",
+            full: false,
+            className: "px-2 shrink-0",
+          })}
         >
           <option value="newest">Newest</option>
           <option value="oldest">Oldest</option>
@@ -267,56 +332,65 @@ export default async function DashboardPage({
         </select>
         <button
           type="submit"
-          className="h-10 px-3 rounded-xl bg-zinc-900 text-white text-sm font-medium shrink-0"
+          className={buttonClass({ variant: "outline", size: "sm" })}
         >
           Go
         </button>
       </form>
 
       {quotes.length === 0 ? (
-        <div className="text-center py-12 text-zinc-500">
-          <p className="text-sm mb-4">
+        <div className="rounded-2xl border border-dashed border-line-strong bg-surface px-6 py-10 text-center">
+          <p className="text-sm text-ink-muted mb-4">
             {search
               ? `No quotes matching “${search}”${tab.slug === "all" ? "" : ` in ${tab.label}`}.`
               : `Nothing in ${tab.label}.`}
           </p>
           {filtered && (
-            <Link href="/dashboard" className="text-sm underline underline-offset-2">
+            <Link
+              href="/dashboard"
+              className="text-sm font-semibold text-ink underline underline-offset-4"
+            >
               Clear filters
             </Link>
           )}
         </div>
       ) : (
         <>
-          <ul className="space-y-3">
+          <ul className="space-y-2.5">
             {quotes.map((quote) => {
-              const badge = STATUS_LABELS[quote.status] ?? STATUS_LABELS.DRAFT;
               const best = maxTotal(quote);
               return (
                 <li key={quote.id}>
+                  {/*
+                    The left rail is the job-ticket tab: colour-coded by status
+                    so the quote that needs chasing (VIEWED, amber) is findable
+                    down a list held at arm's length.
+                  */}
                   <Link
                     href={`/quotes/${quote.id}`}
-                    className="block rounded-2xl border border-zinc-200 p-4 hover:border-zinc-400 transition-colors"
+                    className={`block rounded-2xl border border-l-[5px] border-line bg-surface p-4 transition-colors hover:border-line-strong ${
+                      statusMeta(quote.status).rail
+                    }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-semibold truncate">{quote.title}</p>
-                        <p className="text-sm text-zinc-500 truncate">{quote.clientName}</p>
+                        <p className="text-sm text-ink-muted truncate">
+                          {quote.clientName}
+                        </p>
                       </div>
-                      <span
-                        className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${badge.color}`}
-                      >
-                        {badge.label}
+                      <StatusBadge status={quote.status} />
+                    </div>
+                    <div className="mt-3 flex items-baseline justify-between gap-3">
+                      {best > 0 ? (
+                        <Money cents={best} currency={quote.currency} size="sm" />
+                      ) : (
+                        <span className="text-sm text-ink-muted">Unpriced</span>
+                      )}
+                      <span className="type-num text-xs text-ink-muted">
+                        {new Date(quote.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    {best > 0 && (
-                      <p className="mt-2 text-sm font-medium">
-                        Up to {formatMoney(best, quote.currency)}
-                      </p>
-                    )}
-                    <p className="mt-1 text-xs text-zinc-400">
-                      {new Date(quote.createdAt).toLocaleDateString()}
-                    </p>
                   </Link>
                 </li>
               );
@@ -331,22 +405,17 @@ export default async function DashboardPage({
                 sort,
                 limit: limit + PAGE_SIZE,
               })}
-              className="mt-4 w-full h-11 rounded-xl border border-zinc-300 text-sm font-medium flex items-center justify-center"
+              className={buttonClass({
+                variant: "outline",
+                block: true,
+                className: "mt-4",
+              })}
             >
               Load more
             </Link>
           )}
         </>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-zinc-50 px-3 py-2.5">
-      <p className="text-[11px] text-zinc-500">{label}</p>
-      <p className="text-sm font-semibold truncate">{value}</p>
     </div>
   );
 }

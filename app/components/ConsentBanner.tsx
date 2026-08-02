@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { onConsentManagerOpenRequest } from "@/lib/consent-events";
+import { buttonClass } from "@/lib/ui";
 
 declare global {
   interface Window {
@@ -102,13 +103,13 @@ export function ConsentBanner() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-ink px-6 py-5 text-white">
+    <div className="on-ink fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-ink px-6 py-5 text-paper">
       <div className="mx-auto flex max-w-4xl flex-col gap-4">
         <p className="text-sm text-paper-muted">
           We use cookies for analytics and ad measurement (Google, Meta,
           TikTok) to see what&apos;s working. Nothing loads until you choose.
           See our{" "}
-          <a href="/cookies" className="underline hover:text-white">
+          <a href="/cookies" className="underline underline-offset-4 hover:text-paper">
             Cookie Policy
           </a>
           .
@@ -145,7 +146,7 @@ export function ConsentBanner() {
           {managing ? (
             <button
               onClick={() => save({ analytics, advertising })}
-              className="h-10 rounded-full bg-amber px-5 text-sm font-bold text-ink hover:bg-amber-deep transition-colors"
+              className={buttonClass({ variant: "accent", size: "sm", pill: true })}
             >
               Save preferences
             </button>
@@ -153,19 +154,19 @@ export function ConsentBanner() {
             <>
               <button
                 onClick={() => save({ analytics: true, advertising: true })}
-                className="h-10 rounded-full bg-amber px-5 text-sm font-bold text-ink hover:bg-amber-deep transition-colors"
+                className={buttonClass({ variant: "accent", size: "sm", pill: true })}
               >
                 Accept all
               </button>
               <button
                 onClick={() => save({ analytics: false, advertising: false })}
-                className="h-10 rounded-full border border-white/20 px-5 text-sm font-bold text-white hover:border-white/40 transition-colors"
+                className="inline-flex h-9 items-center rounded-full border border-white/20 px-3 text-xs font-semibold text-paper hover:border-white/40 transition-colors"
               >
                 Reject all
               </button>
               <button
                 onClick={() => setManaging(true)}
-                className="text-sm font-medium text-paper-muted underline hover:text-white"
+                className="text-sm font-medium text-paper-muted underline underline-offset-4 hover:text-paper"
               >
                 Manage
               </button>

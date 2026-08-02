@@ -4,6 +4,7 @@ import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isQuoteLocked } from "@/lib/quote-lock";
 import { templateScope, TEMPLATE_ORDER } from "@/lib/templates";
+import { buttonClass } from "@/lib/ui";
 import { TierEditor } from "./TierEditor";
 import { PhotoManager } from "./PhotoManager";
 import { QuoteDetailsEditor } from "./QuoteDetailsEditor";
@@ -54,10 +55,15 @@ export default async function QuoteEditPage({
       {/* pb-32 clears the fixed action bar + the app's bottom nav */}
       <div className="max-w-lg mx-auto px-4 py-8 pb-32 space-y-6">
         <div className="flex items-center gap-3">
-          <Link href={`/quotes/${id}`} className="text-zinc-500 hover:text-zinc-900">
+          <Link
+            href={`/quotes/${id}`}
+            className="text-sm text-ink-muted hover:text-ink transition-colors shrink-0"
+          >
             ← Back
           </Link>
-          <h1 className="text-xl font-bold truncate">{quote.title}</h1>
+          <h1 className="type-display text-xl font-extrabold truncate">
+            {quote.title}
+          </h1>
         </div>
 
         <QuoteDetailsEditor
@@ -89,25 +95,25 @@ export default async function QuoteEditPage({
       </div>
 
       {/* Action bar — sits above the fixed h-16 bottom nav in (app)/layout.tsx */}
-      <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-zinc-200">
+      <div className="fixed bottom-16 left-0 right-0 z-40 bg-surface/95 backdrop-blur border-t border-line">
         <div className="max-w-lg mx-auto px-4 py-3 space-y-1.5">
           <div className="flex gap-3">
             <a
               href={`/q/${quote.shareToken}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm flex items-center justify-center"
+              className={buttonClass({ variant: "outline", className: "flex-1" })}
             >
               Preview as client
             </a>
             <Link
               href={`/quotes/${id}`}
-              className="flex-1 h-11 rounded-xl bg-zinc-900 text-white font-semibold text-sm flex items-center justify-center"
+              className={buttonClass({ className: "flex-1" })}
             >
-              Done — Review &amp; Send
+              Done — review &amp; send
             </Link>
           </div>
-          <p className="text-[11px] text-zinc-400 text-center">
+          <p className="text-[11px] text-ink-muted text-center">
             Changes save automatically
           </p>
         </div>

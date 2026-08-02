@@ -7,6 +7,9 @@ export const contentType = "image/png";
 // PLACEHOLDER: code-generated OG card. Swap for a designed asset (real logo,
 // real product screenshot) before spending on paid ads or social — ad
 // platforms and share previews are highly sensitive to visual quality.
+// Hexes are --color-ink / --color-amber / --color-paper / --color-paper-muted;
+// ImageResponse can't read CSS variables, so app/globals.css remains the
+// source of truth for the values.
 export default function Image() {
   return new ImageResponse(
     (

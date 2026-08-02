@@ -1,33 +1,33 @@
 import Link from "next/link";
+import { buttonClass } from "@/lib/ui";
 
-const VARIANTS = {
-  primary:
-    "bg-amber text-ink hover:bg-amber-deep",
-  outline:
-    "bg-transparent text-amber border-2 border-amber hover:bg-amber hover:text-ink",
-  "outline-ink":
-    "bg-transparent text-ink border-2 border-ink/15 hover:border-ink/30",
-} as const;
-
+/**
+ * Marketing CTA. Delegates to the product's `buttonClass()` so the button a
+ * visitor clicks on the landing page is the same object they meet inside the
+ * app — the `outline` variant that used to live here was dead code and is gone.
+ */
 export function CtaButton({
   href,
   size = "lg",
-  variant = "primary",
+  variant = "accent",
   className = "",
   children,
 }: {
   href: string;
-  size?: "lg" | "md";
-  variant?: keyof typeof VARIANTS;
+  size?: "lg" | "xl";
+  variant?: "accent" | "outline";
   className?: string;
   children: React.ReactNode;
 }) {
-  const sizeClasses = size === "lg" ? "h-14 px-8 text-lg" : "h-12 px-6 text-base";
-
   return (
     <Link
       href={href}
-      className={`inline-flex items-center justify-center rounded-full font-bold transition-all hover:-translate-y-0.5 ${sizeClasses} ${VARIANTS[variant]} ${className}`}
+      className={buttonClass({
+        variant,
+        size,
+        pill: true,
+        className: `hover:-translate-y-0.5 transition-transform ${className}`,
+      })}
     >
       {children}
     </Link>

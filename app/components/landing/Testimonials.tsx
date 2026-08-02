@@ -1,17 +1,27 @@
+import { SectionHeading } from "./SectionHeading";
+
+/**
+ * No icon tile here. These are quotes — the words are the content, and an icon
+ * beside each one was decoration standing in for a person who doesn't exist
+ * yet. The trade label does the identifying work instead.
+ */
 const EXAMPLES = [
   {
-    emoji: "🎨",
-    quote: "\"I used to lose the good jobs to whoever texted back first. Now I send the quote from the truck.\"",
+    trade: "Painting",
+    quote:
+      "I used to lose the good jobs to whoever texted back first. Now I send the quote from the truck.",
     role: "Solo painter (example)",
   },
   {
-    emoji: "💦",
-    quote: "\"The tiers alone bumped my average job up — clients pick 'Better' way more than I expected.\"",
+    trade: "Pressure washing",
+    quote:
+      "The tiers alone bumped my average job up — clients pick 'Better' way more than I expected.",
     role: "Pressure washing owner (example)",
   },
   {
-    emoji: "🧹",
-    quote: "\"I'm terrible at following up. Now it just happens, and I still get the credit for checking in.\"",
+    trade: "Cleaning",
+    quote:
+      "I'm terrible at following up. Now it just happens, and I still get the credit for checking in.",
     role: "Cleaning business owner (example)",
   },
 ];
@@ -20,29 +30,33 @@ export function Testimonials() {
   return (
     <section className="px-6 py-20 bg-paper-warm">
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-3xl sm:text-4xl font-extrabold tracking-[-0.02em] text-center mb-2 text-ink">
-          What this kind of owner tells us
-        </h2>
-        <p className="text-center text-xs text-ink-muted/70 mb-12 max-w-md mx-auto italic">
-          These are example quotes based on interviews with owners like you —
-          not real customers yet. We&apos;ll swap in real ones as early
-          members come on board.
-        </p>
+        <SectionHeading
+          eyebrow="From the field"
+          title="What this kind of owner tells us"
+        >
+          <span className="text-sm italic">
+            These are example quotes based on interviews with owners like you —
+            not real customers yet. We&apos;ll swap in real ones as early
+            members come on board.
+          </span>
+        </SectionHeading>
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {EXAMPLES.map((t) => (
-            <div
+            <figure
               key={t.role}
-              className="rounded-2xl bg-paper p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
+              className="rounded-2xl bg-paper border border-line p-6 transition-all hover:-translate-y-1 hover:shadow-lg"
             >
-              <div className="w-11 h-11 rounded-xl bg-amber/15 flex items-center justify-center text-2xl mb-4">
-                {t.emoji}
-              </div>
-              <p className="font-semibold text-sm leading-relaxed mb-3 text-ink">
-                {t.quote}
+              <p className="type-eyebrow text-[10px] text-amber-deep mb-4">
+                {t.trade}
               </p>
-              <p className="text-xs text-ink-muted">{t.role}</p>
-            </div>
+              <blockquote className="font-semibold text-[15px] leading-relaxed text-ink">
+                “{t.quote}”
+              </blockquote>
+              <figcaption className="text-xs text-ink-muted mt-4">
+                {t.role}
+              </figcaption>
+            </figure>
           ))}
         </div>
       </div>

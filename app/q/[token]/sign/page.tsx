@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { db } from "@/lib/db";
-import { formatMoney, quoteTotals } from "@/lib/money";
+import { quoteTotals } from "@/lib/money";
+import { tierLabel } from "@/lib/status";
+import { Money } from "@/app/components/ui/Money";
 import { SignatureCapture } from "./SignatureCapture";
 
 export default async function SignPage({
@@ -33,36 +36,58 @@ export default async function SignPage({
   const totals = quoteTotals(selectedTier.totalCents, taxRatePercent);
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
-      <a href={`/q/${token}`} className="text-zinc-500 hover:text-zinc-900 text-sm">
-        ← Back to quote
-      </a>
+    <div className="min-h-screen bg-paper-warm">
+      <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
+        <Link
+          href={`/q/${token}`}
+          className="text-sm text-ink-muted hover:text-ink transition-colors"
+        >
+          ← Back to quote
+        </Link>
 
-      <div>
-        <h1 className="text-2xl font-bold">Accept Quote</h1>
-        <p className="text-zinc-500 mt-1">
-          You&apos;re accepting the{" "}
-          <span className="font-semibold capitalize text-zinc-700">
-            {selectedTier.label.toLowerCase()}
-          </span>{" "}
-          option for{" "}
-          <span className="font-semibold text-zinc-700">
-            {formatMoney(totals.totalCents, quote.currency)}
-          </span>
-        </p>
-        {taxRatePercent > 0 && (
-          <p className="text-sm text-zinc-500 mt-1">
-            {formatMoney(totals.subtotalCents, quote.currency)} +{" "}
-            {formatMoney(totals.taxCents, quote.currency)} tax ({taxRatePercent}%)
+        <div>
+          <h1 className="type-display text-3xl font-extrabold">Accept quote</h1>
+          <p className="text-ink-muted mt-1.5">
+            You&apos;re accepting the{" "}
+            <span className="font-semibold text-ink">
+              {tierLabel(selectedTier.label)}
+            </span>{" "}
+            option.
           </p>
-        )}
-      </div>
+        </div>
 
-      <SignatureCapture
-        token={token}
-        tierId={selectedTier.id}
-        clientName={quote.clientName}
-      />
+        {/* The amount being agreed to, given the weight it deserves. */}
+        <div className="rounded-2xl border border-line bg-surface p-5">
+          <p className="type-eyebrow text-[10px] text-ink-muted mb-2">
+            Total to accept
+          </p>
+          <Money cents={totals.totalCents} currency={quote.currency} size="lg" />
+          {taxRatePercent > 0 && (
+            <p className="mt-2 text-sm text-ink-muted">
+              <Money
+                cents={totals.subtotalCents}
+                currency={quote.currency}
+                size="xs"
+                tone="inherit"
+              />{" "}
+              +{" "}
+              <Money
+                cents={totals.taxCents}
+                currency={quote.currency}
+                size="xs"
+                tone="inherit"
+              />{" "}
+              tax ({taxRatePercent}%)
+            </p>
+          )}
+        </div>
+
+        <SignatureCapture
+          token={token}
+          tierId={selectedTier.id}
+          clientName={quote.clientName}
+        />
+      </div>
     </div>
   );
 }

@@ -2,19 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireDbUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { formatMoney, quoteTotals } from "@/lib/money";
+import { quoteTotals } from "@/lib/money";
 import { isQuoteLocked, lockedMessage } from "@/lib/quote-lock";
+import { statusMeta, tierLabel } from "@/lib/status";
+import { buttonClass, PAGE_SHELL } from "@/lib/ui";
+import { Money } from "@/app/components/ui/Money";
+import { StatusBadge } from "@/app/components/ui/StatusBadge";
+import { CheckIcon, LinkIcon } from "@/app/components/icons";
 import { SendQuoteButton } from "./SendQuoteButton";
 import { CopyLinkButton } from "./CopyLinkButton";
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: "Draft", color: "bg-zinc-100 text-zinc-600" },
-  SENT: { label: "Sent", color: "bg-blue-100 text-blue-700" },
-  VIEWED: { label: "Viewed — client opened it!", color: "bg-yellow-100 text-yellow-700" },
-  ACCEPTED: { label: "Accepted", color: "bg-green-100 text-green-700" },
-  DECLINED: { label: "Declined", color: "bg-red-100 text-red-600" },
-  EXPIRED: { label: "Expired", color: "bg-zinc-100 text-zinc-500" },
-};
 
 export default async function QuoteDetailPage({
   params,
@@ -37,7 +33,6 @@ export default async function QuoteDetailPage({
 
   if (!quote) notFound();
 
-  const badge = STATUS_LABELS[quote.status] ?? STATUS_LABELS.DRAFT;
   const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL}/q/${quote.shareToken}`;
   const taxRatePercent = Number(quote.taxRatePercent);
   const acceptedTier = quote.tiers.find((t) => t.id === quote.acceptedTierId);
@@ -45,27 +40,40 @@ export default async function QuoteDetailPage({
   const currency = quote.currency;
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold leading-tight">{quote.title}</h1>
-          <p className="text-zinc-500 mt-0.5">{quote.clientName}</p>
+    <div className={`${PAGE_SHELL} space-y-5`}>
+      {/* The status rail from the list carries through to the detail header, so
+          the same colour keeps meaning the same thing. */}
+      <div
+        className={`rounded-2xl border border-l-[5px] border-line bg-surface p-5 ${
+          statusMeta(quote.status).rail
+        }`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="type-display text-2xl font-extrabold leading-tight">
+            {quote.title}
+          </h1>
+          <StatusBadge status={quote.status} />
         </div>
-        <span className={`shrink-0 text-xs font-medium px-2.5 py-1.5 rounded-full ${badge.color}`}>
-          {badge.label}
-        </span>
+        <p className="text-ink-muted mt-1">{quote.clientName}</p>
+        {/* Only when it says more than the badge already does */}
+        {statusMeta(quote.status).longLabel !==
+          statusMeta(quote.status).label && (
+          <p className="mt-1.5 text-xs text-ink-muted">
+            {statusMeta(quote.status).longLabel}
+          </p>
+        )}
       </div>
 
       {/* Actions */}
       {locked ? (
-        <p className="text-sm text-zinc-500 rounded-xl bg-zinc-50 px-4 py-3">
+        <p className="text-sm text-ink-muted rounded-xl border border-line bg-surface px-4 py-3">
           {lockedMessage(quote.status)}
         </p>
       ) : (
         <div className="flex gap-3">
           <Link
             href={`/quotes/${quote.id}/edit`}
-            className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm flex items-center justify-center"
+            className={buttonClass({ variant: "outline", className: "flex-1" })}
           >
             Edit
           </Link>
@@ -77,13 +85,16 @@ export default async function QuoteDetailPage({
 
       {/* Share link */}
       {quote.status !== "DRAFT" && (
-        <div className="rounded-2xl bg-zinc-50 p-4">
-          <p className="text-xs text-zinc-500 mb-1.5 font-medium">Client Link</p>
+        <div className="rounded-2xl border border-line bg-surface p-4">
+          <p className="type-eyebrow text-[10px] text-ink-muted mb-2 flex items-center gap-1.5">
+            <LinkIcon size={13} />
+            Client link
+          </p>
           <a
             href={publicUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-mono break-all text-blue-700 underline underline-offset-2"
+            className="type-num text-sm break-all text-ink underline underline-offset-4 decoration-line-strong hover:decoration-ink"
           >
             {publicUrl}
           </a>
@@ -92,7 +103,8 @@ export default async function QuoteDetailPage({
       )}
 
       {/* Tiers */}
-      <div className="space-y-4">
+      <div className="space-y-3">
+        <p className="type-eyebrow text-[10px] text-ink-muted">Options</p>
         {quote.tiers.map((tier) => {
           const totals = quoteTotals(tier.totalCents, taxRatePercent);
           const isAccepted = tier.id === quote.acceptedTierId;
@@ -100,45 +112,68 @@ export default async function QuoteDetailPage({
             <div
               key={tier.id}
               className={`rounded-2xl border p-4 ${
-                isAccepted ? "border-green-300 ring-2 ring-green-200" : "border-zinc-200"
+                isAccepted
+                  ? "border-accepted-rail ring-1 ring-accepted-rail/30 bg-accepted-fill/40"
+                  : "border-line bg-surface"
               }`}
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between gap-3 mb-3">
                 <span className="font-semibold text-sm flex items-center gap-2">
-                  {tier.label.charAt(0) + tier.label.slice(1).toLowerCase()}
+                  {tierLabel(tier.label)}
                   {isAccepted && (
-                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-accepted-fill text-accepted-text">
+                      <CheckIcon size={11} />
                       Accepted
                     </span>
                   )}
                 </span>
-                <span className="font-bold text-lg">
-                  {formatMoney(totals.totalCents, currency)}
-                </span>
+                <Money cents={totals.totalCents} currency={currency} size="md" />
               </div>
               {tier.lineItems.length > 0 && (
-                <ul className="space-y-1">
+                <ul className="space-y-1.5">
                   {tier.lineItems.map((item) => (
-                    <li key={item.id} className="flex justify-between text-sm text-zinc-600">
-                      <span>{item.description}</span>
-                      <span>{formatMoney(item.totalCents, currency)}</span>
+                    <li
+                      key={item.id}
+                      className="flex justify-between gap-4 text-sm text-ink-muted"
+                    >
+                      <span className="min-w-0">{item.description}</span>
+                      <Money
+                        cents={item.totalCents}
+                        currency={currency}
+                        size="xs"
+                        tone="muted"
+                      />
                     </li>
                   ))}
                 </ul>
               )}
               {taxRatePercent > 0 && (
-                <div className="mt-3 pt-3 border-t border-zinc-100 space-y-1 text-sm">
-                  <div className="flex justify-between text-zinc-500">
+                <div className="mt-3 pt-3 border-t border-line space-y-1.5 text-sm">
+                  <div className="flex justify-between text-ink-muted">
                     <span>Subtotal</span>
-                    <span>{formatMoney(totals.subtotalCents, currency)}</span>
+                    <Money
+                      cents={totals.subtotalCents}
+                      currency={currency}
+                      size="xs"
+                      tone="muted"
+                    />
                   </div>
-                  <div className="flex justify-between text-zinc-500">
+                  <div className="flex justify-between text-ink-muted">
                     <span>Tax ({taxRatePercent}%)</span>
-                    <span>{formatMoney(totals.taxCents, currency)}</span>
+                    <Money
+                      cents={totals.taxCents}
+                      currency={currency}
+                      size="xs"
+                      tone="muted"
+                    />
                   </div>
-                  <div className="flex justify-between font-semibold text-zinc-900">
+                  <div className="flex justify-between font-semibold text-ink">
                     <span>Total</span>
-                    <span>{formatMoney(totals.totalCents, currency)}</span>
+                    <Money
+                      cents={totals.totalCents}
+                      currency={currency}
+                      size="xs"
+                    />
                   </div>
                 </div>
               )}
@@ -149,28 +184,31 @@ export default async function QuoteDetailPage({
 
       {/* Accepted info */}
       {quote.status === "ACCEPTED" && (
-        <div className="rounded-2xl bg-green-50 border border-green-200 p-4 text-sm">
-          <p className="font-semibold text-green-800">Quote Accepted</p>
+        <div className="rounded-2xl border border-accepted-rail/30 bg-accepted-fill p-4 text-sm">
+          <p className="font-semibold text-accepted-text flex items-center gap-1.5">
+            <CheckIcon size={15} />
+            Quote accepted
+          </p>
           {acceptedTier && (
-            <p className="text-green-700 mt-0.5">
-              Option:{" "}
-              <span className="font-medium">
-                {acceptedTier.label.charAt(0) +
-                  acceptedTier.label.slice(1).toLowerCase()}
-              </span>{" "}
-              —{" "}
-              <span className="font-medium">
-                {formatMoney(
-                  quoteTotals(acceptedTier.totalCents, taxRatePercent).totalCents,
-                  currency
-                )}
-              </span>
+            <p className="text-accepted-text/85 mt-1">
+              {tierLabel(acceptedTier.label)} option —{" "}
+              <Money
+                cents={
+                  quoteTotals(acceptedTier.totalCents, taxRatePercent).totalCents
+                }
+                currency={currency}
+                size="xs"
+                tone="inherit"
+              />
             </p>
           )}
           {quote.signedByName && (
-            <p className="text-green-700 mt-0.5">
-              Signed by <span className="font-medium">{quote.signedByName}</span>{" "}
-              on {quote.signedAt ? new Date(quote.signedAt).toLocaleDateString() : "—"}
+            <p className="text-accepted-text/85 mt-1">
+              Signed by{" "}
+              <span className="font-semibold">{quote.signedByName}</span> on{" "}
+              {quote.signedAt
+                ? new Date(quote.signedAt).toLocaleDateString()
+                : "—"}
             </p>
           )}
         </div>

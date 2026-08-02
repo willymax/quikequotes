@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { buttonClass, inputClass, labelClass } from "@/lib/ui";
 
 export function SignInForm() {
   const [email, setEmail] = useState("");
@@ -35,7 +36,7 @@ export function SignInForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-1.5" htmlFor="email">
+        <label className={labelClass()} htmlFor="email">
           Email
         </label>
         <input
@@ -44,13 +45,13 @@ export function SignInForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass()}
           placeholder="you@example.com"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1.5" htmlFor="password">
+        <label className={labelClass()} htmlFor="password">
           Password
         </label>
         <input
@@ -59,24 +60,27 @@ export function SignInForm() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className={inputClass()}
           placeholder="••••••••"
         />
       </div>
 
-      {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
+      {error && <p className="text-sm text-danger font-semibold">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full h-12 rounded-xl bg-zinc-900 text-white font-semibold text-base disabled:opacity-60"
+        className={buttonClass({ variant: "accent", size: "lg", block: true })}
       >
-        {loading ? "Signing in..." : "Sign in"}
+        {loading ? "Signing in…" : "Sign in"}
       </button>
 
-      <p className="text-center text-sm text-zinc-500">
+      <p className="text-center text-sm text-ink-muted">
         No account?{" "}
-        <Link href="/sign-up" className="text-zinc-900 font-medium underline underline-offset-2">
+        <Link
+          href="/sign-up"
+          className="text-ink font-semibold underline underline-offset-4"
+        >
           Sign up
         </Link>
       </p>

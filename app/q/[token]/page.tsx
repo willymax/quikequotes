@@ -2,19 +2,11 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { formatMoney, quoteTotals } from "@/lib/money";
-
-const TIER_COLORS: Record<string, string> = {
-  GOOD: "border-zinc-200 bg-zinc-50",
-  BETTER: "border-blue-200 bg-blue-50",
-  BEST: "border-amber-200 bg-amber-50",
-};
-
-const TIER_LABELS: Record<string, string> = {
-  GOOD: "Good",
-  BETTER: "Better",
-  BEST: "Best",
-};
+import { quoteTotals } from "@/lib/money";
+import { tierMeta } from "@/lib/status";
+import { buttonClass } from "@/lib/ui";
+import { Money } from "@/app/components/ui/Money";
+import { CheckIcon, StarIcon } from "@/app/components/icons";
 
 export default async function ClientQuotePage({
   params,
@@ -57,197 +49,271 @@ export default async function ClientQuotePage({
   const currency = quote.currency;
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
-      {/* Business header */}
-      <div className="flex items-center gap-3">
-        {quote.user.logoUrl ? (
-          <Image
-            src={quote.user.logoUrl}
-            alt="Business logo"
-            width={48}
-            height={48}
-            className="rounded-xl object-contain"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center text-white font-bold text-lg">
-            {quote.user.businessName?.[0] ?? "?"}
-          </div>
-        )}
-        <div>
-          <p className="font-bold">{quote.user.businessName}</p>
-          {quote.user.phone && (
-            <a href={`tel:${quote.user.phone}`} className="text-sm text-zinc-500">
-              {quote.user.phone}
-            </a>
+    <div className="min-h-screen bg-paper-warm">
+      {/*
+        The contractor's business, not ours — this page is their letterhead. It
+        gets the ink band so the quote below reads as a document that was issued
+        rather than a web page that happened to load.
+      */}
+      <header className="bg-ink on-ink px-4 py-5">
+        <div className="max-w-lg mx-auto flex items-center gap-3">
+          {quote.user.logoUrl ? (
+            <Image
+              src={quote.user.logoUrl}
+              alt={quote.user.businessName ?? "Business logo"}
+              width={48}
+              height={48}
+              className="rounded-xl object-contain bg-paper"
+            />
+          ) : (
+            <div className="w-12 h-12 shrink-0 rounded-xl bg-amber flex items-center justify-center text-ink font-extrabold text-lg">
+              {quote.user.businessName?.[0]?.toUpperCase() ?? "?"}
+            </div>
           )}
-        </div>
-      </div>
-
-      {/* Quote title */}
-      <div>
-        <h1 className="text-2xl font-bold">{quote.title}</h1>
-        <p className="text-zinc-500 mt-1">
-          Prepared for{" "}
-          <span className="font-medium text-zinc-700">{quote.clientName}</span>
-        </p>
-        {quote.notes && (
-          <p className="mt-3 text-sm text-zinc-600 leading-relaxed">{quote.notes}</p>
-        )}
-      </div>
-
-      {/* Status banners */}
-      {quote.status === "ACCEPTED" && (
-        <div className="rounded-2xl bg-green-50 border border-green-200 p-4">
-          <p className="font-semibold text-green-800">Quote Accepted</p>
-          {acceptedTier && (
-            <p className="text-sm text-green-700 mt-0.5">
-              You accepted the{" "}
-              <span className="font-semibold">{TIER_LABELS[acceptedTier.label]}</span>{" "}
-              option —{" "}
-              <span className="font-semibold">
-                {formatMoney(
-                  quoteTotals(acceptedTier.totalCents, taxRatePercent).totalCents,
-                  currency
-                )}
-              </span>
+          <div className="min-w-0">
+            <p className="font-bold text-paper truncate">
+              {quote.user.businessName}
             </p>
-          )}
-          {quote.signedByName && (
-            <p className="text-sm text-green-700 mt-0.5">
-              Signed by {quote.signedByName}
-              {quote.signedAt ? ` on ${new Date(quote.signedAt).toLocaleDateString()}` : ""}
-            </p>
-          )}
-        </div>
-      )}
-
-      {quote.status === "DECLINED" && (
-        <div className="rounded-2xl bg-zinc-100 border border-zinc-200 p-4">
-          <p className="text-zinc-600">This quote was declined.</p>
-        </div>
-      )}
-
-      {quote.status === "EXPIRED" && (
-        <div className="rounded-2xl bg-zinc-100 border border-zinc-200 p-4">
-          <p className="text-zinc-600">This quote has expired. Please contact us for a new one.</p>
-        </div>
-      )}
-
-      {/* Photos */}
-      {quote.photos.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wide mb-3">
-            Photos
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            {quote.photos.map((photo) => (
-              <div key={photo.id} className="rounded-xl overflow-hidden aspect-square bg-zinc-100">
-                <Image
-                  src={photo.url}
-                  alt={photo.caption ?? "Job photo"}
-                  width={300}
-                  height={300}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tiers */}
-      <div>
-        <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wide mb-3">
-          Options
-        </h2>
-        <div className="space-y-4">
-          {quote.tiers.map((tier) => {
-            const totals = quoteTotals(tier.totalCents, taxRatePercent);
-            const isAccepted = tier.id === quote.acceptedTierId;
-            // Once a choice is made, keep it obvious which card it was
-            const dimmed = Boolean(acceptedTier) && !isAccepted;
-            return (
-              <div
-                key={tier.id}
-                className={`rounded-2xl border-2 p-4 ${
-                  isAccepted
-                    ? "border-green-400 bg-green-50 ring-2 ring-green-200"
-                    : TIER_COLORS[tier.label]
-                } ${dimmed ? "opacity-50" : ""}`}
+            {quote.user.phone && (
+              <a
+                href={`tel:${quote.user.phone}`}
+                className="type-num text-sm text-paper-muted hover:text-paper transition-colors"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-lg flex items-center gap-2">
-                    {TIER_LABELS[tier.label]}
-                    {isAccepted && (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-600 text-white">
-                        Accepted
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-2xl font-bold">
-                    {formatMoney(totals.totalCents, currency)}
-                  </span>
+                {quote.user.phone}
+              </a>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-lg mx-auto px-4 py-7 space-y-6">
+        {/* Quote title */}
+        <div>
+          <p className="type-eyebrow text-[10px] text-ink-muted mb-2">Quote</p>
+          <h1 className="type-display text-3xl font-extrabold">{quote.title}</h1>
+          <p className="text-ink-muted mt-1.5">
+            Prepared for{" "}
+            <span className="font-semibold text-ink">{quote.clientName}</span>
+          </p>
+          {quote.notes && (
+            <p className="mt-4 text-sm text-ink-muted leading-relaxed">
+              {quote.notes}
+            </p>
+          )}
+        </div>
+
+        {/* Status banners */}
+        {quote.status === "ACCEPTED" && (
+          <div className="rounded-2xl bg-accepted-fill border border-accepted-rail/30 p-4">
+            <p className="font-semibold text-accepted-text flex items-center gap-1.5">
+              <CheckIcon size={16} />
+              Quote accepted
+            </p>
+            {acceptedTier && (
+              <p className="text-sm text-accepted-text/85 mt-1">
+                You accepted the{" "}
+                <span className="font-semibold">
+                  {tierMeta(acceptedTier.label).label}
+                </span>{" "}
+                option —{" "}
+                <Money
+                  cents={
+                    quoteTotals(acceptedTier.totalCents, taxRatePercent)
+                      .totalCents
+                  }
+                  currency={currency}
+                  size="xs"
+                  tone="inherit"
+                />
+              </p>
+            )}
+            {quote.signedByName && (
+              <p className="text-sm text-accepted-text/85 mt-1">
+                Signed by {quote.signedByName}
+                {quote.signedAt
+                  ? ` on ${new Date(quote.signedAt).toLocaleDateString()}`
+                  : ""}
+              </p>
+            )}
+          </div>
+        )}
+
+        {quote.status === "DECLINED" && (
+          <div className="rounded-2xl bg-closed-fill border border-line p-4">
+            <p className="text-sm text-closed-text">
+              This quote was declined. Get in touch if that was a mistake.
+            </p>
+          </div>
+        )}
+
+        {quote.status === "EXPIRED" && (
+          <div className="rounded-2xl bg-closed-fill border border-line p-4">
+            <p className="text-sm text-closed-text">
+              This quote has expired. Call for an up-to-date price.
+            </p>
+          </div>
+        )}
+
+        {/* Photos */}
+        {quote.photos.length > 0 && (
+          <div>
+            <h2 className="type-eyebrow text-[10px] text-ink-muted mb-3">
+              Photos
+            </h2>
+            <div className="grid grid-cols-2 gap-2">
+              {quote.photos.map((photo) => (
+                <div
+                  key={photo.id}
+                  className="rounded-xl overflow-hidden aspect-square bg-surface border border-line"
+                >
+                  <Image
+                    src={photo.url}
+                    alt={photo.caption ?? "Job photo"}
+                    width={300}
+                    height={300}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                {tier.description && (
-                  <p className="text-sm text-zinc-600 mb-3">{tier.description}</p>
-                )}
-                {tier.lineItems.length > 0 && (
-                  <ul className="space-y-1.5">
-                    {tier.lineItems.map((item) => (
-                      <li key={item.id} className="flex justify-between text-sm">
-                        <span className="text-zinc-700">{item.description}</span>
-                        <span className="font-medium text-zinc-900">
-                          {formatMoney(item.totalCents, currency)}
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tiers */}
+        <div>
+          <h2 className="type-eyebrow text-[10px] text-ink-muted mb-3">
+            Choose an option
+          </h2>
+          <div className="space-y-4">
+            {quote.tiers.map((tier) => {
+              const meta = tierMeta(tier.label);
+              const totals = quoteTotals(tier.totalCents, taxRatePercent);
+              const isAccepted = tier.id === quote.acceptedTierId;
+              // Once a choice is made, keep it obvious which card it was
+              const dimmed = Boolean(acceptedTier) && !isAccepted;
+              return (
+                <div
+                  key={tier.id}
+                  className={`relative rounded-2xl border-2 p-4 ${
+                    isAccepted
+                      ? "border-accepted-rail bg-accepted-fill"
+                      : meta.card
+                  } ${dimmed ? "opacity-50" : ""}`}
+                >
+                  {meta.recommended && !acceptedTier && (
+                    <span className="absolute -top-2.5 left-4 inline-flex items-center gap-1 rounded-full bg-amber px-2.5 py-0.5 text-[10px] font-bold text-ink">
+                      <StarIcon size={11} />
+                      Most clients pick this
+                    </span>
+                  )}
+
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <span className="type-display text-lg font-extrabold flex items-center gap-2">
+                      {meta.label}
+                      {isAccepted && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-accepted-rail text-paper">
+                          <CheckIcon size={11} />
+                          Accepted
                         </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {taxRatePercent > 0 && (
-                  <div className="mt-3 pt-3 border-t border-zinc-200/70 space-y-1 text-sm">
-                    <div className="flex justify-between text-zinc-600">
-                      <span>Subtotal</span>
-                      <span>{formatMoney(totals.subtotalCents, currency)}</span>
-                    </div>
-                    <div className="flex justify-between text-zinc-600">
-                      <span>Tax ({taxRatePercent}%)</span>
-                      <span>{formatMoney(totals.taxCents, currency)}</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-zinc-900">
-                      <span>Total</span>
-                      <span>{formatMoney(totals.totalCents, currency)}</span>
-                    </div>
+                      )}
+                    </span>
+                    <Money
+                      cents={totals.totalCents}
+                      currency={currency}
+                      size="lg"
+                    />
                   </div>
-                )}
+                  {tier.description && (
+                    <p className="text-sm text-ink-muted mb-3 leading-relaxed">
+                      {tier.description}
+                    </p>
+                  )}
+                  {tier.lineItems.length > 0 && (
+                    <ul className="space-y-1.5">
+                      {tier.lineItems.map((item) => (
+                        <li
+                          key={item.id}
+                          className="flex justify-between gap-4 text-sm"
+                        >
+                          <span className="text-ink-muted min-w-0">
+                            {item.description}
+                          </span>
+                          <Money
+                            cents={item.totalCents}
+                            currency={currency}
+                            size="xs"
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
 
-                {isActive && (
-                  <Link
-                    href={`/q/${token}/sign?tier=${tier.id}`}
-                    className="mt-4 block w-full h-12 rounded-xl bg-zinc-900 text-white font-semibold text-base flex items-center justify-center"
-                  >
-                    Accept This Option
-                  </Link>
-                )}
-              </div>
-            );
-          })}
+                  {taxRatePercent > 0 && (
+                    <div className="mt-3 pt-3 border-t border-ink/10 space-y-1.5 text-sm">
+                      <div className="flex justify-between text-ink-muted">
+                        <span>Subtotal</span>
+                        <Money
+                          cents={totals.subtotalCents}
+                          currency={currency}
+                          size="xs"
+                          tone="muted"
+                        />
+                      </div>
+                      <div className="flex justify-between text-ink-muted">
+                        <span>Tax ({taxRatePercent}%)</span>
+                        <Money
+                          cents={totals.taxCents}
+                          currency={currency}
+                          size="xs"
+                          tone="muted"
+                        />
+                      </div>
+                      <div className="flex justify-between font-semibold">
+                        <span>Total</span>
+                        <Money
+                          cents={totals.totalCents}
+                          currency={currency}
+                          size="xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {isActive && (
+                    <Link
+                      href={`/q/${token}/sign?tier=${tier.id}`}
+                      className={buttonClass({
+                        // Amber is the app's action colour, and accepting is the
+                        // only thing this page is asking anyone to do.
+                        variant: meta.recommended ? "accent" : "primary",
+                        size: "lg",
+                        block: true,
+                        className: "mt-4",
+                      })}
+                    >
+                      Accept {meta.label}
+                    </Link>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Decline */}
+        {isActive && (
+          <div className="text-center pt-1 pb-4">
+            <form action={`/q/${token}/decline`} method="POST">
+              <button
+                type="submit"
+                className="text-sm text-ink-muted underline underline-offset-4 hover:text-ink transition-colors"
+              >
+                No thanks, decline this quote
+              </button>
+            </form>
+          </div>
+        )}
       </div>
-
-      {/* Decline */}
-      {isActive && (
-        <div className="text-center pt-2">
-          <form action={`/q/${token}/decline`} method="POST">
-            <button
-              type="submit"
-              className="text-sm text-zinc-400 underline underline-offset-2"
-            >
-              No thanks, decline this quote
-            </button>
-          </form>
-        </div>
-      )}
     </div>
   );
 }

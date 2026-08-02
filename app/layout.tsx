@@ -1,12 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Sora, IBM_Plex_Mono } from "next/font/google";
+import { Archivo, IBM_Plex_Mono } from "next/font/google";
 import Script from "next/script";
 import { ConsentBanner } from "./components/ConsentBanner";
 import "./globals.css";
 
-const sora = Sora({
-  variable: "--font-sora",
+// Archivo is variable on both width (62–125) and weight (100–900). Pulling in
+// the `wdth` axis is what lets `.type-display` in globals.css widen headlines
+// without loading a second family.
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  axes: ["wdth"],
 });
 
 const plexMono = IBM_Plex_Mono({
@@ -57,6 +61,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // --color-ink. Rendered by the browser chrome, so it can't read the variable;
+  // app/globals.css is the source of truth.
   themeColor: "#14171c",
 };
 
@@ -78,7 +84,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sora.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${archivo.variable} ${plexMono.variable} h-full antialiased`}
     >
       <head>
         <script

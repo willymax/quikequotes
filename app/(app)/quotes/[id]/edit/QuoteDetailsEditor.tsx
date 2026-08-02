@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateQuote } from "@/app/actions/quotes";
 import { CURRENCIES } from "@/lib/currency";
+import { buttonClass, inputClass, labelClass } from "@/lib/ui";
 
 type QuoteDetails = {
   id: string;
@@ -16,9 +17,6 @@ type QuoteDetails = {
   taxRatePercent: number;
   currency: string;
 };
-
-const INPUT_CLASS =
-  "w-full h-12 px-4 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900";
 
 export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
   const [isPending, startTransition] = useTransition();
@@ -52,23 +50,23 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
   }
 
   return (
-    <details className="rounded-2xl border border-zinc-200">
+    <details className="rounded-2xl border border-line bg-surface">
       <summary className="p-4 cursor-pointer list-none flex items-center justify-between gap-3">
         <span className="min-w-0">
           <span className="block font-semibold text-sm truncate">
-            Client &amp; Job Details
+            Client &amp; job details
           </span>
-          <span className="block text-xs text-zinc-500 truncate">
+          <span className="block text-xs text-ink-muted truncate">
             {quote.clientName} · {quote.title}
           </span>
         </span>
-        <span className="text-xs text-zinc-400 shrink-0">Edit</span>
+        <span className="text-xs font-semibold text-ink-muted shrink-0">Edit</span>
       </summary>
 
       <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5" htmlFor="title">
-            Quote Title <span className="text-red-500">*</span>
+          <label className={labelClass()} htmlFor="title">
+            Quote title <span className="text-danger">*</span>
           </label>
           <input
             id="title"
@@ -77,13 +75,13 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
             required
             maxLength={200}
             defaultValue={quote.title}
-            className={INPUT_CLASS}
+            className={inputClass()}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" htmlFor="clientName">
-            Client Name <span className="text-red-500">*</span>
+          <label className={labelClass()} htmlFor="clientName">
+            Client name <span className="text-danger">*</span>
           </label>
           <input
             id="clientName"
@@ -92,13 +90,13 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
             required
             maxLength={100}
             defaultValue={quote.clientName}
-            className={INPUT_CLASS}
+            className={inputClass()}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" htmlFor="clientPhone">
-            Client Phone
+          <label className={labelClass()} htmlFor="clientPhone">
+            Client phone
           </label>
           <input
             id="clientPhone"
@@ -107,13 +105,13 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
             maxLength={30}
             defaultValue={quote.clientPhone ?? ""}
             placeholder="+1 555 000 0000"
-            className={INPUT_CLASS}
+            className={inputClass()}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" htmlFor="clientEmail">
-            Client Email
+          <label className={labelClass()} htmlFor="clientEmail">
+            Client email
           </label>
           <input
             id="clientEmail"
@@ -121,13 +119,13 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
             type="email"
             defaultValue={quote.clientEmail ?? ""}
             placeholder="john@example.com"
-            className={INPUT_CLASS}
+            className={inputClass()}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" htmlFor="jobAddress">
-            Job Address
+          <label className={labelClass()} htmlFor="jobAddress">
+            Job address
           </label>
           <input
             id="jobAddress"
@@ -136,29 +134,29 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
             maxLength={200}
             defaultValue={quote.jobAddress ?? ""}
             placeholder="123 Main St, City, State"
-            className={INPUT_CLASS}
+            className={inputClass()}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" htmlFor="validUntil">
-            Valid Until
+          <label className={labelClass()} htmlFor="validUntil">
+            Valid until
           </label>
           <input
             id="validUntil"
             name="validUntil"
             type="date"
             defaultValue={quote.validUntil ?? ""}
-            className={INPUT_CLASS}
+            className={inputClass()}
           />
         </div>
 
         <div>
           <label
-            className="block text-sm font-medium mb-1.5"
+            className={labelClass()}
             htmlFor="taxRatePercent"
           >
-            Tax Rate (%)
+            Tax rate (%)
           </label>
           <input
             id="taxRatePercent"
@@ -170,22 +168,22 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
             inputMode="decimal"
             onFocus={(e) => e.currentTarget.select()}
             defaultValue={String(quote.taxRatePercent)}
-            className={INPUT_CLASS}
+            className={inputClass()}
           />
-          <p className="mt-1.5 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-ink-muted leading-relaxed">
             Applies to this quote only. Defaults from your business profile.
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" htmlFor="currency">
+          <label className={labelClass()} htmlFor="currency">
             Currency
           </label>
           <select
             id="currency"
             name="currency"
             defaultValue={quote.currency}
-            className="w-full h-12 px-4 text-base border border-zinc-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900"
+            className={inputClass()}
           >
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
@@ -193,13 +191,13 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
               </option>
             ))}
           </select>
-          <p className="mt-1.5 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-ink-muted leading-relaxed">
             Relabels this quote only — amounts are not converted.
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" htmlFor="notes">
+          <label className={labelClass()} htmlFor="notes">
             Notes
           </label>
           <textarea
@@ -208,22 +206,22 @@ export function QuoteDetailsEditor({ quote }: { quote: QuoteDetails }) {
             rows={3}
             maxLength={1000}
             defaultValue={quote.notes ?? ""}
-            placeholder="Any special instructions or scope details..."
-            className="w-full px-4 py-3 text-base border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
+            placeholder="Special instructions or scope details…"
+            className={inputClass({ size: "area" })}
           />
         </div>
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="text-sm text-danger font-semibold">{error}</p>}
         {saved && !isPending && (
-          <p className="text-sm text-green-600">Details saved.</p>
+          <p className="text-sm text-accepted-text font-semibold">Details saved.</p>
         )}
 
         <button
           type="submit"
           disabled={isPending}
-          className="w-full h-11 rounded-xl bg-zinc-900 text-white font-semibold text-sm disabled:opacity-60"
+          className={buttonClass({ block: true })}
         >
-          {isPending ? "Saving..." : "Save Details"}
+          {isPending ? "Saving…" : "Save details"}
         </button>
       </form>
     </details>
